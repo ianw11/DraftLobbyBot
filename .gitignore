@@ -1,3 +1,5 @@
 #These keep .js and .js.map files out of view. 
 *.js
 *.js.map
+node_modules
+forever.sh

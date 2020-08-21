@@ -1,15 +1,21 @@
 import Command from './types/Command';
 
 interface CommandMap {
-    [index: string]: Command;
+    [i: string]: Command;
 }
 
-import List from './list';
-import Create from './create';
+import ListCommand from './list';
+import CreateCommand from './create';
+import InfoCommand from './info';
+import DeleteCommand from './delete';
+import StartCommand from './start';
 
 const Mapping: CommandMap = {
-    'list': new List(),
-    'create': new Create()
+    'list': new ListCommand(),
+    'create': new CreateCommand(),
+    'info': new InfoCommand(),
+    'delete': new DeleteCommand(),
+    'start': new StartCommand()
 };
 
 export default Mapping;

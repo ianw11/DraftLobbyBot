@@ -1,3 +1,5 @@
+import Context from "./Context";
+
 export default interface Command {
-    execute(): void;
+    execute(context: Context): Promise<void>;
 }
