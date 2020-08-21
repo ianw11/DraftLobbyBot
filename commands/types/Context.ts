@@ -1,25 +1,30 @@
-import { Client, User } from "discord.js";
-import DraftServer, { UserResolver, DraftUserId } from "../../models/DraftServer";
-import DraftUser, { SessionResolver } from "../../models/DraftUser";
-import { SessionId } from "../../models/Session";
+import { Client, User, Message } from "discord.js";
+import DraftServer, { UserResolver, SessionResolver } from "../../models/DraftServer";
+import { ENV } from "../../env";
+import DraftUser from "../../models/DraftUser";
 
 export default class Context {
+    readonly env: ENV;
     readonly client: Client;
     readonly draftServer: DraftServer;
-    private readonly user: User;
+    readonly parameters: string[];
+    
+    readonly message: Message; // Likely only to be used for debug purposes
 
     // Computed values
     readonly draftUser: DraftUser;
     readonly sessionResolver: SessionResolver;
     readonly userResolver: UserResolver;
 
-    constructor(client: Client, draftServer: DraftServer, user: User) {
+    constructor(env: ENV, client: Client, draftServer: DraftServer, user: User, parameters: string[], message: Message) {
+        this.env = env;
         this.client = client;
         this.draftServer = draftServer;
-        this.user = user;
+        this.parameters = parameters;
+        this.message = message;
         
         this.draftUser = this.draftServer.getDraftUser(user);
-        this.sessionResolver = (sessionId: SessionId) => this.draftServer.getSession(sessionId);
-        this.userResolver = (draftUserId: DraftUserId) => this.draftServer.getDraftUserById(draftUserId);
+        this.sessionResolver = draftServer.sessionResolver;
+        this.userResolver = draftServer.userResolver;
     }
 }

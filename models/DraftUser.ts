@@ -1,21 +1,20 @@
-import { User, DMChannel } from "discord.js";
+import { User } from "discord.js";
 import Session, {SessionId} from "./Session";
 import {removeFromArray} from "../Utils";
-import { DraftUserId } from "./DraftServer";
-
-export interface SessionResolver {
-    (sessionId: SessionId): Session;
-}
+import { DraftUserId, SessionResolver } from "./DraftServer";
 
 export default class DraftUser {
     private readonly user: User;
 
-    ownsSession?: SessionId;
+    createdSessionId?: SessionId;
     private joinedSessions: SessionId[] = [];
     private waitlistedSessions: SessionId[] = [];
 
-    constructor(user: User) {
+    private readonly sessionResolver: SessionResolver;
+
+    constructor(user: User, sessionResolver: SessionResolver) {
         this.user = user;
+        this.sessionResolver = sessionResolver;
     }
 
     getUserId(): DraftUserId {
@@ -63,17 +62,39 @@ export default class DraftUser {
         }
     }
 
-    async listSessions(resolver: SessionResolver) {
+    async listSessions() {
         let msg = "\n**Sessions you are confirmed for:**\n";
 
-        const callback = (sessionId: SessionId) => {
-            const session = resolver(sessionId);
-            msg += `- ${session.toString()}\n`;
+        const callback = (includePlace: boolean) => {
+            return (sessionId: SessionId) => {
+                const session = this.sessionResolver(sessionId);
+                msg += `- ${session.toString()}`;
+                if (includePlace) {
+                    const position = session.getWaitlistIndexOf(this.getUserId()) + 1;
+                    msg += ` || You are in position ${position} of ${session.getNumWaitlisted()}`;
+                }
+                msg += '\n';
+            }
         };
 
-        this.joinedSessions.forEach(callback);
+        this.joinedSessions.forEach(callback(false));
         msg += "**Sessions you are waitlisted for:**\n";
-        this.waitlistedSessions.forEach(callback);
+        this.waitlistedSessions.forEach(callback(true));
+
+        await this.sendDM(msg);
+    }
+
+    async printOwnedSessionInfo() {
+        if (!this.createdSessionId) {
+            await this.sendDM("Cannot send info - you haven't created a draft session");
+            return;
+        }
+
+        const session = this.sessionResolver(this.createdSessionId);
+
+        let msg = `You have a draft session\n`;
+        msg += `${session.toString()}\n`
+        msg += `${session.getNumConfirmed()} confirmed and ${session.getNumWaitlisted()} waitlisted`;
 
         await this.sendDM(msg);
     }

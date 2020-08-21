@@ -3,17 +3,18 @@ import DraftUser from "./DraftUser";
 import { removeFromArray } from "../Utils";
 import { UserResolver, DraftUserId } from "./DraftServer";
 
-
 export type SessionId = string;
 
 export default class Session {
     readonly ownerId: string;
 
-    private message: Message;
-    sessionId: SessionId;
+    private readonly message: Message;
+    readonly sessionId: SessionId;
 
-    private joinedPlayers: DraftUserId[] = [];
-    private waitlistedPlayers: DraftUserId[] = [];
+    private readonly userResolver: UserResolver;
+
+    private readonly joinedPlayers: DraftUserId[] = [];
+    private readonly waitlistedPlayers: DraftUserId[] = [];
 
     // Session metadata
     name: string = "Unnamed Draft";
@@ -29,8 +30,17 @@ export default class Session {
         asap: true
     };
 
-    constructor (ownerId: string) {
+    constructor (ownerId: string, message: Message, userResolver: UserResolver) {
         this.ownerId = ownerId;
+
+        this.message = message;
+        this.sessionId = message.id;
+
+        this.userResolver = userResolver;
+    }
+
+    async updateMessage() {
+        await this.message.edit(`${this.toString(true)}\n\nTap the reaction below to register and again to unregister`);
     }
 
     getNumConfirmed() {
@@ -40,14 +50,15 @@ export default class Session {
         return this.waitlistedPlayers.length;
     }
 
+    getWaitlistIndexOf(draftUserId: DraftUserId): number {
+        return this.waitlistedPlayers.indexOf(draftUserId);
+    }
+
     canAddPlayers() : boolean {
         return this.getNumConfirmed() < this.maxNumPlayers;
     }
 
-    setMessage(message: Message) {
-        this.message = message;
-        this.sessionId = message.id;
-    }
+
     setName(name: string) {
         this.name = name;
     }
@@ -73,9 +84,6 @@ export default class Session {
         }
     }
 
-    toString(): string {
-        return `**${this.name}** _${this.when.asap ? 'Fires when full (asap)' : this.when.date + ' at ' + this.when.time}_ -- [Max Players: ${this.maxNumPlayers} || ${this.description}]`;
-    }
 
     async addPlayer(draftUser: DraftUser) {
         const userId = draftUser.getUserId();
@@ -93,7 +101,7 @@ export default class Session {
         }
     }
 
-    async removePlayer(draftUser: DraftUser, resolver: UserResolver) {
+    async removePlayer(draftUser: DraftUser) {
         const userId = draftUser.getUserId();
 
         if (userId === this.ownerId) {
@@ -112,34 +120,38 @@ export default class Session {
             }
         }
 
-        this.upgradePlayer(resolver);
+        this.upgradePlayer();
     }
 
-    async upgradePlayer(resolver: UserResolver) {
+    async upgradePlayer() {
         while (this.canAddPlayers() && this.waitlistedPlayers.length > 0) {
             const upgradedPlayerId = this.waitlistedPlayers.shift();
-            const upgradedPlayer = resolver(upgradedPlayerId);
+            const upgradedPlayer = this.userResolver(upgradedPlayerId);
 
             this.joinedPlayers.push(upgradedPlayerId);
             upgradedPlayer.upgradedFromWaitlist(this);
         }
     }
 
-    async terminate(resolver: UserResolver, announcementChannel: TextChannel, started: boolean = false) {
-        const users: DraftUser[] = [];
-        const callback = (draftUserId) => {
-            const draftUser = resolver(draftUserId);
-            users.push(draftUser);
+
+    async terminate(started: boolean = false) {
+        const callback = (draftUserId: DraftUserId) => {
+            const draftUser = this.userResolver(draftUserId);
             draftUser.sessionClosed(this, started);
         };
         this.joinedPlayers.forEach(callback);
         this.waitlistedPlayers.forEach(callback);
 
-        if (started) {
-        } else {
-            //await this.message.edit('DRAFT CANCELLED');
-        }
+        await this.message.delete();
+    }
 
-        await this.message.delete()
+    toString(multiline = false): string {
+        const date = this.when.date ? this.when.date : '';
+        const time = this.when.time ? this.when.time : '';
+        const when = this.when.asap ? 'Fires when full (asap)' : date + ' at ' + time;
+        
+        const linebreak = multiline ? '\n' : '';
+
+        return `**${this.name}** ${linebreak} _${when}_ ${multiline ? linebreak : '-- ['}Max Players: ${this.maxNumPlayers} ${multiline ? linebreak : '|'} ${this.description}${multiline ? '' : ']'}`;
     }
 }

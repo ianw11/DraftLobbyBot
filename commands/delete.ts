@@ -5,4 +5,8 @@ export default class DeleteCommand implements Command {
     async execute(context: Context) {
         await context.draftServer.closeSession(context.draftUser);
     }
+
+    help() {
+        return "Deletes any session you've already created.";
+    }
 }
