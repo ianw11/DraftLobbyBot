@@ -27,6 +27,7 @@ export default class EditSessionCommand implements Command {
             case 'max':
             case 'num':
             case 'players':
+            case 'capacity':
                 session.setMaxNumPlayers(Number.parseInt(value));
                 break;
             case 'd':
@@ -46,12 +47,10 @@ export default class EditSessionCommand implements Command {
             default:
                 break;
         }
-
-        await session.updateMessage();
     }
 
     help() {
-        return 'Edit attributes of your draft session.  Current attributes include: `name, max/num/players, d/description, date, fire/full, url`.  Use "clear" for date to set the draft to fire when full.';
+        return 'Edit attributes of your draft session.  Current attributes include: `name, capacity/max/num/players, d/description, date, fire/full, url`.  Use "clear" for date to set the draft to fire when full.';
     }
 
     usage(invocation: string) {

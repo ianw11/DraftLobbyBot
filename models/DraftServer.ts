@@ -70,10 +70,9 @@ export default class DraftServer {
         draftUser.setCreatedSessionId(session.sessionId);
         
         // Add the creator to their Session
-        session.addPlayer(draftUser);
+        await session.addPlayer(draftUser);
 
         // Update and react to indicate we're ready to go
-        await session.updateMessage();
         await message.react(this.EMOJI);
     }
 

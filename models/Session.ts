@@ -19,8 +19,8 @@ const DEFAULT_PARAMS: SessionParameters = {
     name: '',
     url: '',
     maxNumPlayers: 8,
-    description: "Generic Draft Lobby",
-    fireWhenFull: false
+    description: "<NO DESCRIPTION PROVIDED>",
+    fireWhenFull: true
 };
 
 export default class Session {
@@ -54,10 +54,6 @@ export default class Session {
         this.userResolver = userResolver;
     }
 
-    async updateMessage() {
-        await this.message.edit(`${this.toString(true)}\n\nTap the reaction below to register and again to unregister`);
-    }
-
     getNumConfirmed() {
         return this.joinedPlayers.length;
     }
@@ -74,27 +70,32 @@ export default class Session {
     }
 
 
-    setName(name: string) {
+    async setName(name: string) {
         this.params.name = name;
+        await this.updateMessage();
     }
     async setMaxNumPlayers(maxNumPlayers: number) {
         if (maxNumPlayers < this.getNumConfirmed()) {
             throw `There are ${this.getNumConfirmed()} people already confirmed - some of them will need to leave before I can lower to ${maxNumPlayers}`;
         }
-        
+
         this.params.maxNumPlayers = maxNumPlayers;
+        await this.updateMessage();
         await this.fireIfAble();
     }
-    setDescription(description: string) {
+    async setDescription(description: string) {
         this.params.description = description;
+        await this.updateMessage();
     }
-    setDate(date: Date) {
+    async setDate(date: Date) {
         this.params.date = date;
+        await this.updateMessage();
     }
-    setFireWhenFull(fire: boolean) {
+    async setFireWhenFull(fire: boolean) {
         this.params.fireWhenFull = fire;
+        await this.updateMessage();
     }
-    setUrl(url: string) {
+    async setUrl(url: string) {
         this.params.url = url;
     }
 
@@ -114,6 +115,7 @@ export default class Session {
             draftUser.addedToWaitlist(this);
         }
 
+        await this.updateMessage();
         await this.fireIfAble();
     }
 
@@ -136,10 +138,11 @@ export default class Session {
             }
         }
 
-        this.upgradePlayer();
+        await this.updateMessage();
+        await this.upgradePlayer();
     }
 
-    async upgradePlayer() {
+    private async upgradePlayer() {
         while (this.canAddPlayers() && this.waitlistedPlayers.length > 0) {
             const upgradedPlayerId = this.waitlistedPlayers.shift();
             const upgradedPlayer = this.userResolver(upgradedPlayerId);
@@ -147,6 +150,7 @@ export default class Session {
             this.joinedPlayers.push(upgradedPlayerId);
             upgradedPlayer.upgradedFromWaitlist(this);
         }
+        await this.updateMessage();
     }
 
 
@@ -161,6 +165,10 @@ export default class Session {
         await this.message.delete();
     }
 
+    private async updateMessage() {
+        await this.message.edit(`${this.toString(true)}\n\nTap the reaction below to register and again to unregister`);
+    }
+
     private async fireIfAble() {
         if (!this.params.fireWhenFull || this.canAddPlayers()) {
             return;
@@ -172,16 +180,17 @@ export default class Session {
     buildAttendanceString() {
         const numJoined = this.joinedPlayers.length;
         const numWaitlisted = this.waitlistedPlayers.length;
-        return `Number joined: ${numJoined} Capacity: ${this.params.maxNumPlayers} Waitlisted: ${numWaitlisted}`;
+        const {maxNumPlayers, fireWhenFull} = this.params;
+        return `Number joined: ${numJoined} <> Capacity: ${maxNumPlayers} <> ${fireWhenFull ? "Draft will launch when capacity is reached" : `Waitlisted: ${numWaitlisted}`}`;
     }
 
     toString(multiline = false, provideOwnerInformation = false): string {
         const linebreak = multiline ? '\n' : '  ';
         const {name, date, description} = this.params;
 
-        const when = date ? `Scheduled for: ${date.toString()}` : 'Fires when full (asap)';
+        const when = date ? `Scheduled for: ___${date.toString()}___` : "Ad-hoc event - Join now!";
         
-        return `**${name}**${linebreak}_${when}_${multiline ? linebreak : ' ['}${this.buildAttendanceString()}${multiline ? linebreak : '] -- '}${description}`;
+        return `**${name}**${linebreak}${when}${multiline ? linebreak : ' ['}${this.buildAttendanceString()}${multiline ? linebreak : '] -- '}${description}`;
     }
 
     toOwnerString(includeWaitlist = false) {

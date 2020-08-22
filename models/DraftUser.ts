@@ -66,12 +66,16 @@ export default class DraftUser {
 
     async sessionClosed(session: Session, startedNormally: boolean = true) {
         removeFromArray(session.sessionId, this.joinedSessions);
-        removeFromArray(session.sessionId, this.waitlistedSessions);
+        const waitlisted = removeFromArray(session.sessionId, this.waitlistedSessions);
 
         if (startedNormally) {
-            await this.sendDM(`Session ${session.params.name} has started. Draft url: ${session.params.url}`);
+            if (waitlisted) {
+                await this.sendDM(`${session.params.name} has started, but you were on the waitlist`);
+            } else {
+                await this.sendDM(`${session.params.name} has started. Draft url: ${session.params.url}`);
+            }
         } else {
-            await this.sendDM(`Session ${session.params.name} has been cancelled`);
+            await this.sendDM(`${session.params.name} has been cancelled`);
         }
     }
 
