@@ -6,6 +6,12 @@ import {hri} from "human-readable-ids";
 
 export type SessionId = string;
 
+export class when {
+    date?: string;
+    time?: string;
+    asap: boolean;
+}
+
 export default class Session {
     readonly ownerId: string;
 
@@ -21,28 +27,24 @@ export default class Session {
     name: string = "Unnamed Draft";
     maxNumPlayers: number = 8;
     description: string = "No Description Available";
-    when: {
-        date?: string;
-        time?: string;
-        asap: boolean;
-    } = {
+    when: when = {
         date: null,
         time: null,
         asap: true
     };
     url: string;
 
-    constructor (ownerId: string, message: Message, userResolver: UserResolver) {
+    constructor (ownerId: string, message: Message, userResolver: UserResolver, overrideName?: string) {
         this.ownerId = ownerId;
 
         this.message = message;
+
         this.sessionId = message.id;
 
         this.userResolver = userResolver;
 
         let creator: string = userResolver(ownerId).getUserName();
-
-        this.name = `${creator}'s Pod`
+        this.name = (overrideName != "") ? overrideName : `${creator}'s Pod`;
 
         this.url = "https://mtgadraft.herokuapp.com/?session="+hri.random();
     }
@@ -91,6 +93,9 @@ export default class Session {
             this.when.time = null;
         }
     }
+    setWhen(when: when) {
+        this.when = when;
+    }
 
 
     async addPlayer(draftUser: DraftUser) {
@@ -111,9 +116,9 @@ export default class Session {
     }
 
     fireIfAble() {
-        if (this.getNumConfirmed() == this.maxNumPlayers) {
-            this.terminate(true);
-        }
+        if (this.getNumConfirmed() < this.maxNumPlayers) return;
+        if (!this.when.asap && (new Date() < new Date(`${this.when.date} ${this.when.time}`))) return;
+        this.terminate(true);
     }
 
     async removePlayer(draftUser: DraftUser) {

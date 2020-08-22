@@ -1,4 +1,4 @@
-import Session, {SessionId} from "./Session";
+import Session, {SessionId, when} from "./Session";
 import DraftUser from "./DraftUser";
 import { User, Message, TextChannel, Client, Guild, GuildChannel } from "discord.js";
 import { ENV } from "../env";
@@ -53,7 +53,7 @@ export default class DraftServer {
         }
     }
 
-    async createSession(draftUser: DraftUser) {
+    async createSession(draftUser: DraftUser, when?: when) {
         // Close out any prior Sessions
         if (draftUser.createdSessionId) {
             await this.closeSession(draftUser);
@@ -62,17 +62,23 @@ export default class DraftServer {
         // First send the message that will be monitored
         const message = await this.announcementChannel.send("Creating session...");
 
+        let overrideName: string = "";
+        if (draftUser.isBot()) overrideName = "Scheduled Draft";
+
         // Then build the actual Session object
-        const session = new Session(draftUser.getUserId(), message, this.userResolver);
+        const session = new Session(draftUser.getUserId(), message, this.userResolver, overrideName);
+
+        // Add the when if it was specified
+        if (when) session.setWhen(when);
 
         // Persist the Session object
         draftUser.createdSessionId = session.sessionId;
         this.sessions[session.sessionId] = session;
 
         // Add the creator to their Session
-        session.addPlayer(draftUser);
+        if (!draftUser.isBot()) session.addPlayer(draftUser);
 
-        // React to indicate we're ready to go
+        // Update and react to indicate we're ready to go
         await session.updateMessage();
         await message.react(this.EMOJI);
     }

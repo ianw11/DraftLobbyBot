@@ -1,14 +1,24 @@
+const fs = require('fs');
+import {CronJob} from 'cron';
 import env from './env';
 import {Client, Message, MessageReaction, User, Guild} from 'discord.js';
 import Commands from './commands';
 import DraftServer from './models/DraftServer';
-import Session from './models/Session';
+import Session, { when } from './models/Session';
 import DraftUser from './models/DraftUser';
 import Context from './commands/types/Context';
+
+class CronEntry {
+    cronTask: string;
+    sessionTime: string
+}
 
 // Join Link: https://discord.com/api/oauth2/authorize?client_id=745877785611862056&scope=bot&permissions=133200
 
 const SERVERS: {[guildId: string]: DraftServer} = {};
+
+let rawdata = fs.readFileSync('cronjobs.json');
+let cronjobs = JSON.parse(rawdata);
 
 ///////////////////////////////////////////
 // Helper Methods for the Discord client //
@@ -93,7 +103,21 @@ client.once('ready', async () => {
 
     // Setup the DraftServers
     client.guilds.cache.each(async (guild: Guild) => {
-        SERVERS[guild.id] = new DraftServer(guild, env);
+        let guildServer: DraftServer = new DraftServer(guild, env);
+        SERVERS[guild.id] = guildServer;
+        let cron_entry_for_guild: CronEntry = cronjobs[guild.id];
+        if (cron_entry_for_guild != null) {
+            let job: CronJob = new CronJob(cron_entry_for_guild.cronTask, function() {
+                let me: DraftUser = guildServer.getDraftUser(client.user);
+                let scheduledWhen: when = {
+                    asap: false,
+                    date: new Date().toDateString(),
+                    time: cron_entry_for_guild.sessionTime
+                }
+                guildServer.createSession(me,scheduledWhen);
+              }, null, true, 'America/Chicago');
+            job.start();
+        } 
     });
 });
 

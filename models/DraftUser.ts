@@ -25,8 +25,14 @@ export default class DraftUser {
         return this.user.username;
     }
 
+    isBot(): boolean {
+        return this.user.bot;
+    }
+
     async sendDM(message: string) {
-        await (await this.user.createDM()).send(message);
+        if (!this.user.bot) {
+            await (await this.user.createDM()).send(message);
+        }
     }
 
     async addedToSession(session: Session) {

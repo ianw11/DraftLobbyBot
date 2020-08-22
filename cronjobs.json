@@ -1,0 +1,10 @@
+{
+    "700049494594683012" : {
+        "cronTask": "0 0 0 * * Sun,Wed", 
+        "sessionTime": "7:30 PM GMT-4"
+    },
+    "689531570402492455" : {
+        "cronTask": "*/5 * * * * *", 
+        "sessionTime": "7:30 PM GMT-4"
+    }
+}
