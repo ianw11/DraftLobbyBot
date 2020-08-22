@@ -2,6 +2,7 @@ import { Message, TextChannel } from "discord.js";
 import DraftUser from "./DraftUser";
 import { removeFromArray } from "../Utils";
 import { UserResolver, DraftUserId } from "./DraftServer";
+import {hri} from "human-readable-ids";
 
 export type SessionId = string;
 
@@ -29,6 +30,7 @@ export default class Session {
         time: null,
         asap: true
     };
+    url: string;
 
     constructor (ownerId: string, message: Message, userResolver: UserResolver) {
         this.ownerId = ownerId;
@@ -37,6 +39,12 @@ export default class Session {
         this.sessionId = message.id;
 
         this.userResolver = userResolver;
+
+        let creator: string = userResolver(ownerId).getUserName();
+
+        this.name = `${creator}'s Pod`
+
+        this.url = "https://mtgadraft.herokuapp.com/?session="+hri.random();
     }
 
     async updateMessage() {
@@ -95,9 +103,16 @@ export default class Session {
         if (this.canAddPlayers()) {
             this.joinedPlayers.push(userId);
             draftUser.addedToSession(this);
+            this.fireIfAble();
         } else {
             this.waitlistedPlayers.push(userId);
             draftUser.addedToWaitlist(this);
+        }
+    }
+
+    fireIfAble() {
+        if (this.getNumConfirmed() == this.maxNumPlayers) {
+            this.terminate(true);
         }
     }
 

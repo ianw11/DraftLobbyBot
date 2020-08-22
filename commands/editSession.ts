@@ -25,6 +25,7 @@ export default class EditSessionCommand implements Command {
             case 'num':
             case 'players':
                 session.setMaxNumPlayers(Number.parseInt(value));
+                session.fireIfAble();
                 break;
             case 'd':
             case 'description':

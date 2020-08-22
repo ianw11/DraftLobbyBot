@@ -1,7 +1,7 @@
 {
 "compilerOptions": {
-    "sourceMap":  true
-
+    "sourceMap":  true,
+    "lib": [ "es2015" ]
 },
 "include": [
     "**/*"

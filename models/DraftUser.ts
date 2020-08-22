@@ -21,6 +21,10 @@ export default class DraftUser {
         return this.user.id;
     }
 
+    getUserName(): string {
+        return this.user.username;
+    }
+
     async sendDM(message: string) {
         await (await this.user.createDM()).send(message);
     }
@@ -56,7 +60,7 @@ export default class DraftUser {
         removeFromArray(session.sessionId, this.waitlistedSessions);
 
         if (startedNormally) {
-            await this.sendDM(`Session ${session.name} has started`);
+            await this.sendDM(`Session ${session.name} has started. Draft will be held here: ${session.url}`);
         } else {
             await this.sendDM(`Session ${session.name} has been cancelled`);
         }
