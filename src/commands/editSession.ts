@@ -65,7 +65,7 @@ export default class EditSessionCommand implements Command {
         const now = new Date();
         let date: Date;
         if (parameters.length === 1) {
-            if (parameters[1].toLocaleLowerCase() === 'clear') {
+            if (parameters[0].toLocaleLowerCase() === 'clear') {
                 date = null;
             } else {
                 // This expects a perfectly formatted string

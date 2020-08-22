@@ -1,4 +1,5 @@
-const ENV_JSON_FILE_LOCATION = './env.json'; // Edit this if needed, though I don't recommend it
+const ENV_JSON_FILE_LOCATION = '../env.json'; // Edit this if needed, though I don't recommend it
+const ENV_JSON = require(ENV_JSON_FILE_LOCATION);
 
 /**
  * ENV defines the "env.json" file that needs to be generated and place in this directory.
@@ -31,5 +32,5 @@ const OVERRIDES: Partial<ENV> = {
     log: (msg) => { if (env.DEBUG) console.log(`[ENV] ${msg}`); }
 }
 
-const env: ENV = {...DEFAULTS, ...(require(ENV_JSON_FILE_LOCATION)), ...OVERRIDES};
+const env: ENV = {...DEFAULTS, ...ENV_JSON, ...OVERRIDES};
 export default env;
