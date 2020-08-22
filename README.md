@@ -1,5 +1,6 @@
-Bare Minimum TypeScript
-=========================
-
-Illustrates the bare minimum configuration for using typescript.
-TSC is run before node, and .js files are output alongside the .ts files.
+Download git tool
+Clone code
+npm install
+create discord bot
+env.json file - bot token and debug
+add bot to server w/ link and bot token
