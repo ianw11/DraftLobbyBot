@@ -6,7 +6,11 @@ import Session from './models/Session';
 import DraftUser from './models/DraftUser';
 import Context from './commands/types/Context';
 
-// Join Link: https://discord.com/api/oauth2/authorize?client_id=745877785611862056&scope=bot&permissions=133200
+//
+// To set your Discord Bot Token, take a look at env.ts for an explanation (and get ready to make an env.json)
+//
+
+// Join Link: https://discord.com/api/oauth2/authorize?client_id={YOUR_CLIENT_ID}&scope=bot&permissions=133200
 
 const SERVERS: {[guildId: string]: DraftServer} = {};
 
@@ -34,6 +38,7 @@ async function onCommand(message: Message) {
     // Perform initial filtering checks
     if (author.bot) return;
     if (env.DEBUG && content === 'dc') {
+        env.log("Bye bye");
         client.destroy(); // Ends the Node process too
         return;
     }
@@ -54,6 +59,7 @@ async function onCommand(message: Message) {
         try {
             await command.execute(context);
         } catch (e) {
+            console.log(e);
             await (await author.createDM()).send(`ERROR: ${e}`);
         }
     } else {
@@ -75,6 +81,7 @@ function onReaction(callback: ReactionCallback): CurriedReactionCallback {
             try {
                 await callback(draftUser, session, draftServer);
             } catch (e) {
+                console.log(e);
                 await draftUser.sendDM(`ERROR: ${e}`);
             }
         }

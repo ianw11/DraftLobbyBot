@@ -53,9 +53,9 @@ export default class DraftServer {
         }
     }
 
-    async createSession(draftUser: DraftUser) {
+    async createSession(draftUser: DraftUser, date?: Date) {
         // Close out any prior Sessions
-        if (draftUser.createdSessionId) {
+        if (draftUser.getCreatedSessionId()) {
             await this.closeSession(draftUser);
         }
 
@@ -63,16 +63,16 @@ export default class DraftServer {
         const message = await this.announcementChannel.send("Creating session...");
 
         // Then build the actual Session object
-        const session = new Session(draftUser.getUserId(), message, this.userResolver);
-
+        const session = new Session(draftUser.getUserId(), message, this.userResolver, {date: date});
+        
         // Persist the Session object
-        draftUser.createdSessionId = session.sessionId;
         this.sessions[session.sessionId] = session;
-
+        draftUser.setCreatedSessionId(session.sessionId);
+        
         // Add the creator to their Session
         session.addPlayer(draftUser);
 
-        // React to indicate we're ready to go
+        // Update and react to indicate we're ready to go
         await session.updateMessage();
         await message.react(this.EMOJI);
     }
@@ -86,14 +86,14 @@ export default class DraftServer {
     }
 
     private async terminate(draftUser: DraftUser, started: boolean = false) {
-        if (!draftUser.createdSessionId) {
+        if (!draftUser.getCreatedSessionId()) {
             throw "You don't have any session to terminate";
         }
 
         const session = this.getSessionFromDraftUser(draftUser);
 
         await session.terminate(started);
-        draftUser.createdSessionId = null;
+        draftUser.setCreatedSessionId(null);
 
         this.sessions[session.sessionId] = null;
     }
@@ -103,10 +103,10 @@ export default class DraftServer {
     }
 
     getSessionFromDraftUser(draftUser: DraftUser): Session | null {
-        return this.getSession(draftUser.createdSessionId);
+        return this.getSession(draftUser.getCreatedSessionId());
     }
 
-    getSession(sessionId: SessionId): Session | null | undefined {
+    getSession(sessionId?: SessionId): Session | null | undefined {
         if (!sessionId) {
             return null;
         }

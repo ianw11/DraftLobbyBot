@@ -6,7 +6,7 @@ import { DraftUserId, SessionResolver } from "./DraftServer";
 export default class DraftUser {
     private readonly user: User;
 
-    createdSessionId?: SessionId;
+    private createdSessionId?: SessionId;
     private joinedSessions: SessionId[] = [];
     private waitlistedSessions: SessionId[] = [];
 
@@ -17,38 +17,51 @@ export default class DraftUser {
         this.sessionResolver = sessionResolver;
     }
 
+
     getUserId(): DraftUserId {
         return this.user.id;
+    }
+
+    getDisplayName(): string {
+        return this.user.username;
     }
 
     async sendDM(message: string) {
         await (await this.user.createDM()).send(message);
     }
 
+    setCreatedSessionId(createdSessionId?: SessionId) {
+        this.createdSessionId = createdSessionId;
+    }
+
+    getCreatedSessionId?(): SessionId {
+        return this.createdSessionId;
+    }
+
     async addedToSession(session: Session) {
         this.joinedSessions.push(session.sessionId);
-        await this.sendDM(`You're confirmed for ${session.name}`);
+        await this.sendDM(`You're confirmed for ${session.params.name}`);
     }
 
     async removedFromSession(session: Session) {
         removeFromArray(session.sessionId, this.joinedSessions);
-        await this.sendDM(`You've been removed from ${session.name}`);
+        await this.sendDM(`You've been removed from ${session.params.name}`);
     }
 
     async upgradedFromWaitlist(session: Session) {
         removeFromArray(session.sessionId, this.waitlistedSessions);
         this.joinedSessions.push(session.sessionId);
-        await this.sendDM(`You've been upgraded from the waitlist for ${session.name}`);
+        await this.sendDM(`You've been upgraded from the waitlist for ${session.params.name}`);
     }
 
     async addedToWaitlist(session: Session) {
         this.waitlistedSessions.push(session.sessionId);
-        await this.sendDM(`You've been waitlisted for ${session.name}.  You're in position: ${session.getNumWaitlisted()}`);
+        await this.sendDM(`You've been waitlisted for ${session.params.name}.  You're in position: ${session.getNumWaitlisted()}`);
     }
 
     async removedFromWaitlist(session: Session) {
         removeFromArray(session.sessionId, this.waitlistedSessions);
-        await this.sendDM(`You've been removed from the waitlist for ${session.name}`);
+        await this.sendDM(`You've been removed from the waitlist for ${session.params.name}`);
     }
 
     async sessionClosed(session: Session, startedNormally: boolean = true) {
@@ -56,9 +69,9 @@ export default class DraftUser {
         removeFromArray(session.sessionId, this.waitlistedSessions);
 
         if (startedNormally) {
-            await this.sendDM(`Session ${session.name} has started`);
+            await this.sendDM(`Session ${session.params.name} has started. Draft url: ${session.params.url}`);
         } else {
-            await this.sendDM(`Session ${session.name} has been cancelled`);
+            await this.sendDM(`Session ${session.params.name} has been cancelled`);
         }
     }
 
@@ -93,8 +106,7 @@ export default class DraftUser {
         const session = this.sessionResolver(this.createdSessionId);
 
         let msg = `You have a draft session\n`;
-        msg += `${session.toString()}\n`
-        msg += `${session.getNumConfirmed()} confirmed and ${session.getNumWaitlisted()} waitlisted`;
+        msg += `${session.toString(true, true)}\n`;
 
         await this.sendDM(msg);
     }

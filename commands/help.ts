@@ -16,7 +16,7 @@ export default class HelpCommand implements Command {
     help(): string {
         return 'Displays this message';
     }
-    usage(invocation): string {
+    usage(invocation: string): string {
         return invocation;
     }
 
@@ -43,6 +43,8 @@ export default class HelpCommand implements Command {
             }
             msg += '\n';
         });
+
+        msg += "\nAs a reminder, I require dates in the format: `mm dd hh:mm` (eg. 8 22 17:30 means Aug 22 at 5:30pm) and the hour is in 24-hour format.\nYes I realize it's a hassle, thank you for putting up with it";
 
         this.message = msg;
     }

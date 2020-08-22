@@ -2,11 +2,30 @@ import { Message, TextChannel } from "discord.js";
 import DraftUser from "./DraftUser";
 import { removeFromArray } from "../Utils";
 import { UserResolver, DraftUserId } from "./DraftServer";
+import { hri } from "human-readable-ids";
 
 export type SessionId = string;
 
+export interface SessionParameters {
+    name: string;
+    maxNumPlayers: number;
+    description: string;
+    date?: Date; // The lack of this field indicates the Session intends to start immediately - aka probably an ad-hoc draft
+    fireWhenFull: boolean; // Or should we wait for the Session owner to run the StartCommand
+    url: string;
+}
+
+const DEFAULT_PARAMS: SessionParameters = {
+    name: '',
+    url: '',
+    maxNumPlayers: 8,
+    description: "Generic Draft Lobby",
+    fireWhenFull: false
+};
+
 export default class Session {
-    readonly ownerId: string;
+    // Maintained only so the owner can't leave the draft instead of deleting it
+    private readonly ownerId: DraftUserId;
 
     private readonly message: Message;
     readonly sessionId: SessionId;
@@ -16,25 +35,21 @@ export default class Session {
     private readonly joinedPlayers: DraftUserId[] = [];
     private readonly waitlistedPlayers: DraftUserId[] = [];
 
-    // Session metadata
-    name: string = "Unnamed Draft";
-    maxNumPlayers: number = 8;
-    description: string = "No Description Available";
-    when: {
-        date?: string;
-        time?: string;
-        asap: boolean;
-    } = {
-        date: null,
-        time: null,
-        asap: true
-    };
+    readonly params: SessionParameters;
 
-    constructor (ownerId: string, message: Message, userResolver: UserResolver) {
+    constructor (ownerId: DraftUserId, message: Message, userResolver: UserResolver, params?: Partial<SessionParameters>) {
         this.ownerId = ownerId;
-
         this.message = message;
         this.sessionId = message.id;
+
+        this.params = {
+            ...DEFAULT_PARAMS,
+            ...{
+                name: `${userResolver(ownerId).getDisplayName()}'s Draft`,
+                url: `https://mtgadraft.herokuapp.com/?session=${hri.random()}`
+            },
+            ...(params || {})
+        };
 
         this.userResolver = userResolver;
     }
@@ -55,33 +70,32 @@ export default class Session {
     }
 
     canAddPlayers() : boolean {
-        return this.getNumConfirmed() < this.maxNumPlayers;
+        return this.getNumConfirmed() < this.params.maxNumPlayers;
     }
 
 
     setName(name: string) {
-        this.name = name;
+        this.params.name = name;
     }
-    setMaxNumPlayers(maxNumPlayers: number) {
-        this.maxNumPlayers = maxNumPlayers;
+    async setMaxNumPlayers(maxNumPlayers: number) {
+        if (maxNumPlayers < this.getNumConfirmed()) {
+            throw `There are ${this.getNumConfirmed()} people already confirmed - some of them will need to leave before I can lower to ${maxNumPlayers}`;
+        }
+        
+        this.params.maxNumPlayers = maxNumPlayers;
+        await this.fireIfAble();
     }
     setDescription(description: string) {
-        this.description = description;
+        this.params.description = description;
     }
-    setDate(date: string) {
-        this.when.date = date;
-        this.when.asap = false;
+    setDate(date: Date) {
+        this.params.date = date;
     }
-    setTime(time: string) {
-        this.when.time = time;
-        this.when.asap = false;
+    setFireWhenFull(fire: boolean) {
+        this.params.fireWhenFull = fire;
     }
-    setAsap(asap: boolean) {
-        this.when.asap = asap;
-        if (asap) {
-            this.when.date = null;
-            this.when.time = null;
-        }
+    setUrl(url: string) {
+        this.params.url = url;
     }
 
 
@@ -99,6 +113,8 @@ export default class Session {
             this.waitlistedPlayers.push(userId);
             draftUser.addedToWaitlist(this);
         }
+
+        await this.fireIfAble();
     }
 
     async removePlayer(draftUser: DraftUser) {
@@ -145,13 +161,33 @@ export default class Session {
         await this.message.delete();
     }
 
-    toString(multiline = false): string {
-        const date = this.when.date ? this.when.date : '';
-        const time = this.when.time ? this.when.time : '';
-        const when = this.when.asap ? 'Fires when full (asap)' : date + ' at ' + time;
-        
-        const linebreak = multiline ? '\n' : '';
+    private async fireIfAble() {
+        if (!this.params.fireWhenFull || this.canAddPlayers()) {
+            return;
+        }
 
-        return `**${this.name}** ${linebreak} _${when}_ ${multiline ? linebreak : '-- ['}Max Players: ${this.maxNumPlayers} ${multiline ? linebreak : '|'} ${this.description}${multiline ? '' : ']'}`;
+        await this.terminate(true);
+    }
+
+    buildAttendanceString() {
+        const numJoined = this.joinedPlayers.length;
+        const numWaitlisted = this.waitlistedPlayers.length;
+        return `Number joined: ${numJoined} Capacity: ${this.params.maxNumPlayers} Waitlisted: ${numWaitlisted}`;
+    }
+
+    toString(multiline = false, provideOwnerInformation = false): string {
+        const linebreak = multiline ? '\n' : '  ';
+        const {name, date, description} = this.params;
+
+        const when = date ? `Scheduled for: ${date.toString()}` : 'Fires when full (asap)';
+        
+        return `**${name}**${linebreak}_${when}_${multiline ? linebreak : ' ['}${this.buildAttendanceString()}${multiline ? linebreak : '] -- '}${description}`;
+    }
+
+    toOwnerString(includeWaitlist = false) {
+        const reducer = (accumulator: DraftUserId, current: string) => `${accumulator}\n- ${this.userResolver(current).getDisplayName()}`;
+        const joinedUsernames = `\nJoined:${this.joinedPlayers.reduce(reducer, '')}`;
+        const waitlistedUsernames = includeWaitlist ? `\nWaitlist:${this.waitlistedPlayers.reduce(reducer, '')}` : '';
+        return `${this.buildAttendanceString()}${joinedUsernames}${waitlistedUsernames}`;
     }
 }

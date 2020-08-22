@@ -2,19 +2,20 @@
   "//1": "describes your app and its dependencies",
   "//2": "https://docs.npmjs.com/files/package.json",
   "//3": "updating this file will download and update your packages",
-  "name": "my-glitch-app",
+  "name": "draft-queue-discord-bot",
   "version": "0.0.1",
-  "description": "What am I about?",
+  "description": "Organizes draft queues in a Discord server",
   "main": "server.js",
   "scripts": {
     "build": "",
     "start": "tsc && node server.js"
   },
   "dependencies": {
-    "typescript": "latest",
-    "@types/node": "latest",
     "@types/express": "latest",
-    "discord.js": "^12.3.1"
+    "@types/node": "latest",
+    "discord.js": "^12.3.1",
+    "human-readable-ids": "latest",
+    "typescript": "latest"
   },
   "engines": {
     "node": "^12"

@@ -3,7 +3,7 @@ import Context from "./Context";
 export default interface Command {
     execute(context: Context): Promise<void>;
     help?(): string;
-    usage?(command: string): string;
-    usageExample?(command: string): string;
+    usage?(invocation: string): string;
+    usageExample?(invocation: string): string;
     exclude?: boolean;
 }
