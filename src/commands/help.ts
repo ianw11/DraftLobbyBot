@@ -4,7 +4,7 @@ import Command from "./types/Command";
 import Context from "./types/Context";
 
 export default class HelpCommand implements Command {
-    private message: string;
+    private message: string = '';
 
     async execute(context: Context) {
         if (!this.message) {

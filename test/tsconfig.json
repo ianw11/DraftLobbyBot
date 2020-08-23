@@ -1,0 +1,11 @@
+{
+    "compilerOptions": {
+        "sourceMap":  true,
+        "target": "ES5",
+        "lib": [ "es2016" ],
+        "strict": false
+    },
+    "include": [
+        "**/*"
+    ]
+}

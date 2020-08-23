@@ -1,8 +1,8 @@
-import { Message, TextChannel } from "discord.js";
+import { Message } from "discord.js";
 import DraftUser from "./DraftUser";
 import { removeFromArray } from "../Utils";
 import { UserResolver, DraftUserId } from "./DraftServer";
-import { hri } from "human-readable-ids";
+const hri = require("human-readable-ids").hri; // JS Library
 
 export type SessionId = string;
 
@@ -10,7 +10,7 @@ export interface SessionParameters {
     name: string;
     maxNumPlayers: number;
     description: string;
-    date?: Date; // The lack of this field indicates the Session intends to start immediately - aka probably an ad-hoc draft
+    date?: Date | null; // The lack of this field indicates the Session intends to start immediately - aka probably an ad-hoc draft
     fireWhenFull: boolean; // Or should we wait for the Session owner to run the StartCommand
     url: string;
 }
@@ -42,16 +42,16 @@ export default class Session {
         this.message = message;
         this.sessionId = message.id;
 
+        this.userResolver = userResolver;
+
         this.params = {
             ...DEFAULT_PARAMS,
             ...{
-                name: `${userResolver.resolve(ownerId).getDisplayName()}'s Draft`,
+                name: `${this.userResolver.resolve(ownerId).getDisplayName()}'s Draft`,
                 url: `https://mtgadraft.herokuapp.com/?session=${hri.random()}`
             },
             ...(params || {})
         };
-
-        this.userResolver = userResolver;
     }
 
     getNumConfirmed() {
@@ -87,7 +87,7 @@ export default class Session {
         this.params.description = description;
         await this.updateMessage();
     }
-    async setDate(date: Date) {
+    async setDate(date: Date | null) {
         this.params.date = date;
         await this.updateMessage();
     }
@@ -143,22 +143,18 @@ export default class Session {
     }
 
     private async upgradePlayer() {
-        while (this.canAddPlayers() && this.waitlistedPlayers.length > 0) {
-            const upgradedPlayerId = this.waitlistedPlayers.shift();
+        let upgradedPlayerId;
+        while (this.canAddPlayers() && (upgradedPlayerId = this.waitlistedPlayers.shift())) {
             const upgradedPlayer = this.userResolver.resolve(upgradedPlayerId);
-
             this.joinedPlayers.push(upgradedPlayerId);
-            upgradedPlayer.upgradedFromWaitlist(this);
+            await upgradedPlayer.upgradedFromWaitlist(this);
         }
         await this.updateMessage();
     }
 
 
     async terminate(started: boolean = false) {
-        const callback = (draftUserId: DraftUserId) => {
-            const draftUser = this.userResolver.resolve(draftUserId);
-            draftUser.sessionClosed(this, started);
-        };
+        const callback = (draftUserId: DraftUserId) => this.userResolver.resolve(draftUserId).sessionClosed(this, started);
         this.joinedPlayers.forEach(callback);
         this.waitlistedPlayers.forEach(callback);
 

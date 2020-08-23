@@ -19,7 +19,10 @@
             "internalConsoleOptions": "openOnFirstSessionStart",
             "skipFiles": [
                 "<node_internals>/**"
-            ]
+            ],
+            "env": {
+                "TS_NODE_PROJECT": "${workspaceFolder}/test/tsconfig.json"
+            }
         },
         {
             "type": "node",
@@ -31,7 +34,10 @@
             "program": "${workspaceFolder}\\server.js",
             "outFiles": [
                 "${workspaceFolder}/**/*.js"
-            ]
+            ],
+            "env": {
+                "TS_NODE_PROJECT": "${workspaceFolder}/tsconfig.json"
+            }
         }
     ]
 }

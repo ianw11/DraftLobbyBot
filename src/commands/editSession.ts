@@ -4,18 +4,24 @@ import { SessionId } from "../models/Session";
 
 export default class EditSessionCommand implements Command {
     async execute(context: Context) {
-        const sessionId: SessionId = context.draftUser.getCreatedSessionId();
+        const sessionId = context.draftUser.getCreatedSessionId();
         if (!sessionId) {
             throw "Unable to modify session - you haven't created one yet";
         }
 
         const session = context.sessionResolver.resolve(sessionId);
+        if (!session) {
+            throw "SessionId found but resolver failed to find the Session";
+        }
 
         if (context.parameters.length < 2) {
             throw "Editing a session is done `edit <attribute> <value>` for example: `edit name My Cool Draft`.  For more information ask me for help from a server"
         }
 
         const field = context.parameters.shift();
+        if (!field) {
+            throw "Missing: the field you want to edit.  Check the help command for more information";
+        }
         const value = context.parameters.join(' ');
         const valueLower = value.toLocaleLowerCase();
         switch (field.toLocaleLowerCase()) {
@@ -61,12 +67,12 @@ export default class EditSessionCommand implements Command {
         return `${invocation} d This is my new decription`;
     }
 
-    buildDate(parameters: string[]): Date {
+    buildDate(parameters: string[]): Date | null {
         const now = new Date();
-        let date: Date;
+        let date: Date | null = null;
         if (parameters.length === 1) {
             if (parameters[0].toLocaleLowerCase() === 'clear') {
-                date = null;
+                // No-op
             } else {
                 // This expects a perfectly formatted string
                 date = new Date(parameters[0]);

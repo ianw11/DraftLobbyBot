@@ -36,7 +36,7 @@ beforeEach(() => {
         url: 'MOCK SESSION URL'
     };
 
-    const mockSession = Substitute.for<Session>();
+    const mockSession: SubstituteOf<Session> = Substitute.for<Session>();
     mockSession.sessionId.returns(SESSION_ID);
     mockSession.params.returns(mockProps);
     mockSession.getNumConfirmed().returns(NUM_CONFIRMED);

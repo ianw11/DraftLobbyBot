@@ -6,7 +6,7 @@ import { DraftUserId, SessionResolver } from "./DraftServer";
 export default class DraftUser {
     private readonly user: User;
 
-    private createdSessionId?: SessionId;
+    private createdSessionId: SessionId | null = null;
     joinedSessions: SessionId[] = [];
     waitlistedSessions: SessionId[] = [];
 
@@ -26,15 +26,18 @@ export default class DraftUser {
         return this.user.username;
     }
 
-    async sendDM(message: string) {
+    async sendDM(message: string | null) {
+        if (!message) {
+            return;
+        }
         await (await this.user.createDM()).send(message);
     }
 
-    setCreatedSessionId(createdSessionId?: SessionId) {
+    setCreatedSessionId(createdSessionId: SessionId | null) {
         this.createdSessionId = createdSessionId;
     }
 
-    getCreatedSessionId?(): SessionId | undefined {
+    getCreatedSessionId(): SessionId | null {
         return this.createdSessionId;
     }
 
@@ -89,6 +92,7 @@ export default class DraftUser {
         const callback = (includePlace: boolean) => {
             return (sessionId: SessionId) => {
                 const session = this.sessionResolver.resolve(sessionId);
+
                 msg += `- ${session.toString()}`;
                 if (includePlace) {
                     const position = session.getWaitlistIndexOf(this.getUserId()) + 1;
@@ -110,7 +114,6 @@ export default class DraftUser {
             await this.sendDM("Cannot send info - you haven't created a draft session");
             return;
         }
-
         const session = this.sessionResolver.resolve(this.createdSessionId);
 
         let msg = `You have a draft session\n`;

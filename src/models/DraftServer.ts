@@ -1,7 +1,7 @@
 import Session, {SessionId} from "./Session";
 import DraftUser from "./DraftUser";
-import { User, Message, TextChannel, Client, Guild, GuildChannel } from "discord.js";
-import { ENV } from "../env";
+import { User, Message, TextChannel, Guild, GuildChannel } from "discord.js";
+import env from "../env";
 
 export type DraftUserId = string;
 
@@ -10,30 +10,30 @@ export type DraftUserId = string;
 // or an interface that's just a function
 
 export interface UserResolver {
-    resolve (draftUserId: DraftUserId): DraftUser | null;
+    resolve (draftUserId: DraftUserId): DraftUser;
 }
 
 export interface SessionResolver {
-    resolve (sessionId: SessionId): Session | null;
+    resolve (sessionId: SessionId): Session;
 }
 
 export default class DraftServer {
-    private sessions: {[messageId: string]: Session} = {};
+    private sessions: {[messageId: string]: Session | undefined} = {};
     private users: {[userId: string]: DraftUser} = {};
     
-    private announcementChannel: TextChannel;
+    private announcementChannel: TextChannel | null = null;
 
     readonly userResolver: UserResolver = {resolve: (draftUserId: DraftUserId) => this.getDraftUserById(draftUserId)};
     readonly sessionResolver: SessionResolver = {resolve: (sessionId: SessionId) => this.getSession(sessionId)};
 
     private readonly EMOJI: string;
 
-    constructor (guild: Guild, env: ENV) {
+    constructor (guild: Guild) {
         this.EMOJI = env.EMOJI;
 
         const {channels, name: guildName, id: guildId} = guild;
 
-        let announcementChannel: TextChannel = null;
+        let announcementChannel = null;
         channels.cache.each((channel: GuildChannel) => {
             const {name: channelName, type} = channel;
 
@@ -58,6 +58,9 @@ export default class DraftServer {
     }
 
     async createSession(draftUser: DraftUser, date?: Date) {
+        if (!this.announcementChannel) {
+            return;
+        }
         // Close out any prior Sessions
         if (draftUser.getCreatedSessionId()) {
             await this.closeSession(draftUser);
@@ -95,29 +98,36 @@ export default class DraftServer {
 
         const session = this.getSessionFromDraftUser(draftUser);
 
-        await session.terminate(started);
+        if (session) {
+            await session.terminate(started);
+            this.sessions[session.sessionId] = undefined;
+        }
+        
         draftUser.setCreatedSessionId(null);
-
-        this.sessions[session.sessionId] = null;
     }
 
-    getSessionFromMessage(message: Message): Session | null {
+    getSessionFromMessage(message: Message): Session | undefined {
         return this.getSession(message.id);
     }
 
-    getSessionFromDraftUser(draftUser: DraftUser): Session | null {
-        return this.getSession(draftUser.getCreatedSessionId());
+    getSessionFromDraftUser(draftUser: DraftUser): Session | undefined {
+        const sessionId = draftUser.getCreatedSessionId();
+        if (!sessionId) {
+            return undefined;
+        }
+        return this.getSession(sessionId);
     }
 
-    getSession(sessionId?: SessionId): Session | null | undefined {
-        if (!sessionId) {
-            return null;
+    getSession(sessionId: SessionId): Session {
+        const session = this.sessions[sessionId];
+        if (session) {
+            return session;
         }
-        return this.sessions[sessionId];
+        throw "Could not find Session for the provided SessionId";
     }
 
     getDraftUser(user: User): DraftUser {
-        let draftUser = this.getDraftUserById(user.id);
+        let draftUser = this.getDraftUserById(user.id, false);
         if (!draftUser) {
             draftUser = new DraftUser(user, this.sessionResolver);
             this.users[user.id] = draftUser;
@@ -125,7 +135,11 @@ export default class DraftServer {
         return draftUser;
     }
 
-    getDraftUserById(draftUserId: DraftUserId): DraftUser | null {
-        return this.users[draftUserId];
+    getDraftUserById(draftUserId: DraftUserId, shouldThrow = true): DraftUser {
+        const user = this.users[draftUserId];
+        if (user || !shouldThrow) {
+            return user;
+        }
+        throw "Could not find DraftUser for the provided DraftUserId";
     }
 }

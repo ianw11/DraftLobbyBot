@@ -1,5 +1,5 @@
 import env from './env';
-import {Client, Message, MessageReaction, User, Guild} from 'discord.js';
+import {Client, Message, MessageReaction, User, Guild, PartialUser} from 'discord.js';
 import Commands from './commands';
 import DraftServer from './models/DraftServer';
 import Session from './models/Session';
@@ -19,18 +19,28 @@ const {PREFIX} = env;
 // Helper Methods for the Discord client //
 ///////////////////////////////////////////
 
-function getDraftServer(guild: Guild) {
-    return SERVERS[guild.id];
+function getDraftServer(guild: Guild): DraftServer {
+    let server = SERVERS[guild.id];
+    if (!server) {
+        server = new DraftServer(guild);
+        SERVERS[guild.id] = server;
+    }
+    return server;
 }
 
-function getServerAndSession(reaction: MessageReaction): [DraftServer, Session] {
+function getServerAndSession(reaction: MessageReaction): [DraftServer, Session|null] {
     const {message} = reaction;
+
     const {guild} = message;
+    if (!guild) {
+        throw "Error with Discord - Guild not included in Message";
+    }
 
     const draftServer = getDraftServer(guild);
+
     const session = draftServer.getSessionFromMessage(message);
 
-    return [draftServer, session];
+    return session ? [draftServer, session] : [draftServer, null];
 }
 
 function onMessage(client: Client) {
@@ -48,16 +58,27 @@ function onMessage(client: Client) {
             await message.channel.send("Sorry, I don't respond in DMs. Give me a command from a server");
             return;
         }
-        if (content[0] !== PREFIX) return;
+        if (content.length === 0 || content[0] !== PREFIX) return;
 
         // Parse out the desired command
         const split = content.split(' ');
-        const commandStr = split.shift().slice(PREFIX.length).trim();
+        let commandStr = split.shift();
+        if (!commandStr) {
+            return;
+        }
+        commandStr = commandStr.slice(PREFIX.length).trim();
         const command = Commands[commandStr];
 
         if (command) {
             const {guild, author} = message;
-            const context = new Context(env, client, getDraftServer(guild), author, split, message);
+            if (!guild) {
+                throw "Error with Discord.js - guild not included in message"
+            }
+            const draftServer = getDraftServer(guild);
+            if (!draftServer) {
+
+            }
+            const context = new Context(env, client, draftServer, author, split, message);
             try {
                 await command.execute(context);
             } catch (e) {
@@ -70,10 +91,12 @@ function onMessage(client: Client) {
     }
 }
 
-type ReactionCallback = (p1: DraftUser, p2: Session, p3: DraftServer) => Promise<void>;
-type CurriedReactionCallback = (r: MessageReaction, u: User) => Promise<void>;
+type ReactionCallback = (p1: DraftUser, p2: Session) => Promise<void>;
+type CurriedReactionCallback = (r: MessageReaction, u: User | PartialUser) => Promise<void>;
 function onReaction(callback: ReactionCallback): CurriedReactionCallback {
-    return async (reaction: MessageReaction, user: User) => {
+    return async (reaction: MessageReaction, rawUser: unknown) => {
+        if (rawUser !instanceof User) return;
+        const user: User = rawUser as User;
         if (user.bot) return;
 
         const [draftServer, session] = getServerAndSession(reaction);
@@ -82,7 +105,7 @@ function onReaction(callback: ReactionCallback): CurriedReactionCallback {
             const draftUser = draftServer.getDraftUser(user);
 
             try {
-                await callback(draftUser, session, draftServer);
+                await callback(draftUser, session);
             } catch (e) {
                 console.log(e);
                 await draftUser.sendDM(`ERROR: ${e}`);
@@ -95,17 +118,12 @@ function onReaction(callback: ReactionCallback): CurriedReactionCallback {
 // DISCORD CLIENT //
 ////////////////////
 
-export default function () {
+export default function main() {
     const {DISCORD_BOT_TOKEN} = env;
     const client = new Client();
 
     client.once('ready', async () => {
         env.log("Logged in successfully");
-
-        // Setup the DraftServers
-        client.guilds.cache.each(async (guild: Guild) => {
-            SERVERS[guild.id] = new DraftServer(guild, env);
-        });
     });
 
     client.on('message', onMessage(client));
