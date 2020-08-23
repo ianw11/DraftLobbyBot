@@ -45,7 +45,7 @@ export default class Session {
         this.params = {
             ...DEFAULT_PARAMS,
             ...{
-                name: `${userResolver(ownerId).getDisplayName()}'s Draft`,
+                name: `${userResolver.resolve(ownerId).getDisplayName()}'s Draft`,
                 url: `https://mtgadraft.herokuapp.com/?session=${hri.random()}`
             },
             ...(params || {})
@@ -145,7 +145,7 @@ export default class Session {
     private async upgradePlayer() {
         while (this.canAddPlayers() && this.waitlistedPlayers.length > 0) {
             const upgradedPlayerId = this.waitlistedPlayers.shift();
-            const upgradedPlayer = this.userResolver(upgradedPlayerId);
+            const upgradedPlayer = this.userResolver.resolve(upgradedPlayerId);
 
             this.joinedPlayers.push(upgradedPlayerId);
             upgradedPlayer.upgradedFromWaitlist(this);
@@ -156,7 +156,7 @@ export default class Session {
 
     async terminate(started: boolean = false) {
         const callback = (draftUserId: DraftUserId) => {
-            const draftUser = this.userResolver(draftUserId);
+            const draftUser = this.userResolver.resolve(draftUserId);
             draftUser.sessionClosed(this, started);
         };
         this.joinedPlayers.forEach(callback);
@@ -194,7 +194,7 @@ export default class Session {
     }
 
     toOwnerString(includeWaitlist = false) {
-        const reducer = (accumulator: DraftUserId, current: string) => `${accumulator}\n- ${this.userResolver(current).getDisplayName()}`;
+        const reducer = (accumulator: DraftUserId, current: string) => `${accumulator}\n- ${this.userResolver.resolve(current).getDisplayName()}`;
         const joinedUsernames = `\nJoined:${this.joinedPlayers.reduce(reducer, '')}`;
         const waitlistedUsernames = includeWaitlist ? `\nWaitlist:${this.waitlistedPlayers.reduce(reducer, '')}` : '';
         return `${this.buildAttendanceString()}${joinedUsernames}${waitlistedUsernames}`;

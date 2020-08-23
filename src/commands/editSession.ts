@@ -9,7 +9,7 @@ export default class EditSessionCommand implements Command {
             throw "Unable to modify session - you haven't created one yet";
         }
 
-        const session = context.sessionResolver(sessionId);
+        const session = context.sessionResolver.resolve(sessionId);
 
         if (context.parameters.length < 2) {
             throw "Editing a session is done `edit <attribute> <value>` for example: `edit name My Cool Draft`.  For more information ask me for help from a server"

@@ -7,10 +7,10 @@ export default class DraftUser {
     private readonly user: User;
 
     private createdSessionId?: SessionId;
-    private joinedSessions: SessionId[] = [];
-    private waitlistedSessions: SessionId[] = [];
+    joinedSessions: SessionId[] = [];
+    waitlistedSessions: SessionId[] = [];
 
-    private readonly sessionResolver: SessionResolver;
+    private sessionResolver: SessionResolver;
 
     constructor(user: User, sessionResolver: SessionResolver) {
         this.user = user;
@@ -34,8 +34,12 @@ export default class DraftUser {
         this.createdSessionId = createdSessionId;
     }
 
-    getCreatedSessionId?(): SessionId {
+    getCreatedSessionId?(): SessionId | undefined {
         return this.createdSessionId;
+    }
+
+    setSessionResolver(sessionResolver: SessionResolver) {
+        this.sessionResolver = sessionResolver;
     }
 
     async addedToSession(session: Session) {
@@ -84,7 +88,7 @@ export default class DraftUser {
 
         const callback = (includePlace: boolean) => {
             return (sessionId: SessionId) => {
-                const session = this.sessionResolver(sessionId);
+                const session = this.sessionResolver.resolve(sessionId);
                 msg += `- ${session.toString()}`;
                 if (includePlace) {
                     const position = session.getWaitlistIndexOf(this.getUserId()) + 1;
@@ -107,7 +111,7 @@ export default class DraftUser {
             return;
         }
 
-        const session = this.sessionResolver(this.createdSessionId);
+        const session = this.sessionResolver.resolve(this.createdSessionId);
 
         let msg = `You have a draft session\n`;
         msg += `${session.toString(true, true)}\n`;

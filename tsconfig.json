@@ -1,13 +1,15 @@
 {
 "compilerOptions": {
     "sourceMap":  true,
-    "lib": [ "es2015" ]
+    "target": "ES5",
+    "lib": [ "es2016" ],
+    "strict": false
 },
 "include": [
     "**/*"
 ],
 "exclude": [
-    "node_modules",
+    "node_modules/",
     "**/*.spec.ts"
 ]
 }

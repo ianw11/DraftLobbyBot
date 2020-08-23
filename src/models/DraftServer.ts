@@ -5,12 +5,16 @@ import { ENV } from "../env";
 
 export type DraftUserId = string;
 
+// For both of these Resolvers, a name ('resolve') is given because the
+// current testing framework doesn't support mocking types
+// or an interface that's just a function
+
 export interface UserResolver {
-    (draftUserId: DraftUserId): DraftUser | null;
+    resolve (draftUserId: DraftUserId): DraftUser | null;
 }
 
 export interface SessionResolver {
-    (sessionId: SessionId): Session;
+    resolve (sessionId: SessionId): Session | null;
 }
 
 export default class DraftServer {
@@ -19,8 +23,8 @@ export default class DraftServer {
     
     private announcementChannel: TextChannel;
 
-    readonly userResolver: UserResolver = (draftUserId: DraftUserId) => this.getDraftUserById(draftUserId);
-    readonly sessionResolver: SessionResolver = (sessionId: SessionId) => this.getSession(sessionId);
+    readonly userResolver: UserResolver = {resolve: (draftUserId: DraftUserId) => this.getDraftUserById(draftUserId)};
+    readonly sessionResolver: SessionResolver = {resolve: (sessionId: SessionId) => this.getSession(sessionId)};
 
     private readonly EMOJI: string;
 
