@@ -15,13 +15,13 @@ export interface SessionParameters {
     url: string;
 }
 
-const DEFAULT_PARAMS: SessionParameters = {
+export const DEFAULT_PARAMS: SessionParameters = Object.freeze({
     name: '',
     url: '',
     maxNumPlayers: 8,
     description: "<NO DESCRIPTION PROVIDED>",
     fireWhenFull: true
-};
+});
 
 export default class Session {
     // Maintained only so the owner can't leave the draft instead of deleting it
@@ -35,7 +35,7 @@ export default class Session {
     private readonly joinedPlayers: DraftUserId[] = [];
     private readonly waitlistedPlayers: DraftUserId[] = [];
 
-    readonly params: SessionParameters;
+    private readonly params: SessionParameters;
 
     constructor (ownerId: DraftUserId, message: Message, userResolver: UserResolver, params?: Partial<SessionParameters>) {
         this.ownerId = ownerId;
@@ -54,6 +54,66 @@ export default class Session {
         };
     }
 
+    getParameters(): SessionParameters {
+        return {...this.params};
+    }
+
+    async setName(name: string) {
+        this.params.name = name;
+        await this.updateMessage();
+    }
+    getName() {
+        return this.params.name;
+    }
+
+    async setUrl(url: string) {
+        this.params.url = url;
+    }
+    getUrl() {
+        return this.params.url;
+    }
+
+    async setMaxNumPlayers(maxNumPlayers: number) {
+        if (maxNumPlayers < 1)  {
+            throw new Error("Minimum allowed number of players is 1");
+        }
+        if (maxNumPlayers < this.getNumConfirmed()) {
+            throw `There are ${this.getNumConfirmed()} people already confirmed - some of them will need to leave before I can lower to ${maxNumPlayers}`;
+        }
+
+        this.params.maxNumPlayers = maxNumPlayers;
+        await this.updateMessage();
+        await this.fireIfAble();
+    }
+    getMaxNumPlayers() {
+        return this.params.maxNumPlayers;
+    }
+
+    async setDescription(description: string) {
+        this.params.description = description;
+        await this.updateMessage();
+    }
+    getDescription() {
+        return this.params.description;
+    }
+
+    async setDate(date: Date | null) {
+        this.params.date = date;
+        await this.updateMessage();
+    }
+    getDate() {
+        return this.params.date;
+    }
+
+    async setFireWhenFull(fire: boolean) {
+        this.params.fireWhenFull = fire;
+        await this.updateMessage();
+    }
+    getFireWhenFull() {
+        return this.params.fireWhenFull;
+    }
+    
+
     getNumConfirmed() {
         return this.joinedPlayers.length;
     }
@@ -65,40 +125,10 @@ export default class Session {
         return this.waitlistedPlayers.indexOf(draftUserId);
     }
 
+
     canAddPlayers() : boolean {
         return this.getNumConfirmed() < this.params.maxNumPlayers;
     }
-
-
-    async setName(name: string) {
-        this.params.name = name;
-        await this.updateMessage();
-    }
-    async setMaxNumPlayers(maxNumPlayers: number) {
-        if (maxNumPlayers < this.getNumConfirmed()) {
-            throw `There are ${this.getNumConfirmed()} people already confirmed - some of them will need to leave before I can lower to ${maxNumPlayers}`;
-        }
-
-        this.params.maxNumPlayers = maxNumPlayers;
-        await this.updateMessage();
-        await this.fireIfAble();
-    }
-    async setDescription(description: string) {
-        this.params.description = description;
-        await this.updateMessage();
-    }
-    async setDate(date: Date | null) {
-        this.params.date = date;
-        await this.updateMessage();
-    }
-    async setFireWhenFull(fire: boolean) {
-        this.params.fireWhenFull = fire;
-        await this.updateMessage();
-    }
-    async setUrl(url: string) {
-        this.params.url = url;
-    }
-
 
     async addPlayer(draftUser: DraftUser) {
         const userId = draftUser.getUserId();

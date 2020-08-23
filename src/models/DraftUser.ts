@@ -47,28 +47,28 @@ export default class DraftUser {
 
     async addedToSession(session: Session) {
         this.joinedSessions.push(session.sessionId);
-        await this.sendDM(`You're confirmed for ${session.params.name}`);
+        await this.sendDM(`You're confirmed for ${session.getName()}`);
     }
 
     async removedFromSession(session: Session) {
         removeFromArray(session.sessionId, this.joinedSessions);
-        await this.sendDM(`You've been removed from ${session.params.name}`);
+        await this.sendDM(`You've been removed from ${session.getName()}`);
     }
 
     async upgradedFromWaitlist(session: Session) {
         removeFromArray(session.sessionId, this.waitlistedSessions);
         this.joinedSessions.push(session.sessionId);
-        await this.sendDM(`You've been upgraded from the waitlist for ${session.params.name}`);
+        await this.sendDM(`You've been upgraded from the waitlist for ${session.getName()}`);
     }
 
     async addedToWaitlist(session: Session) {
         this.waitlistedSessions.push(session.sessionId);
-        await this.sendDM(`You've been waitlisted for ${session.params.name}.  You're in position: ${session.getNumWaitlisted()}`);
+        await this.sendDM(`You've been waitlisted for ${session.getName()}.  You're in position: ${session.getNumWaitlisted()}`);
     }
 
     async removedFromWaitlist(session: Session) {
         removeFromArray(session.sessionId, this.waitlistedSessions);
-        await this.sendDM(`You've been removed from the waitlist for ${session.params.name}`);
+        await this.sendDM(`You've been removed from the waitlist for ${session.getName()}`);
     }
 
     async sessionClosed(session: Session, startedNormally: boolean = true) {
@@ -77,12 +77,12 @@ export default class DraftUser {
 
         if (startedNormally) {
             if (waitlisted) {
-                await this.sendDM(`${session.params.name} has started, but you were on the waitlist`);
+                await this.sendDM(`${session.getName()} has started, but you were on the waitlist`);
             } else {
-                await this.sendDM(`${session.params.name} has started. Draft url: ${session.params.url}`);
+                await this.sendDM(`${session.getName()} has started. Draft url: ${session.getUrl()}`);
             }
         } else {
-            await this.sendDM(`${session.params.name} has been cancelled`);
+            await this.sendDM(`${session.getName()} has been cancelled`);
         }
     }
 
