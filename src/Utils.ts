@@ -1,9 +1,9 @@
-
 export function removeFromArray(value: string, arr: string[]): boolean {
-    const ndx = arr.indexOf(value);
-    if (ndx !== -1) {
-        arr.splice(ndx);
-        return true;
+    let ndx;
+    let removed = false;
+    while (-1 !== (ndx = arr.indexOf(value))) {
+        arr.splice(ndx, 1);
+        removed = true;
     }
-    return false;
+    return removed;
 }

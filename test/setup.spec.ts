@@ -1,4 +1,4 @@
-import Substitute, { SubstituteOf, Arg } from "@fluffy-spoon/substitute";
+import Substitute, { SubstituteOf } from "@fluffy-spoon/substitute";
 import Session, { SessionParameters, SessionId } from "../src/models/Session";
 import { SessionResolver, UserResolver, DraftUserId } from "../src/models/DraftServer";
 import { DMChannel, User, Message } from "discord.js";
