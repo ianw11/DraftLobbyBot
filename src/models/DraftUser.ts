@@ -1,42 +1,45 @@
-import { User } from "discord.js";
+import { User, DMChannel } from "discord.js";
 import Session, {SessionId} from "./Session";
 import {removeFromArray} from "../Utils";
-import { DraftUserId, SessionResolver } from "./DraftServer";
+import { DraftUserId, SessionResolver, DiscordUserResolver } from "./DraftServer";
 
 export default class DraftUser {
-    private readonly user: User;
+    private readonly userId: DraftUserId;
+    private readonly discordUserResolver: DiscordUserResolver;
 
-    private createdSessionId: SessionId | null = null;
+    private sessionResolver: SessionResolver;
+    // Public for unit testing purposes
     joinedSessions: SessionId[] = [];
     waitlistedSessions: SessionId[] = [];
 
-    private sessionResolver: SessionResolver;
+    // Remains null except for when there's an active Session
+    private createdSessionId: SessionId | null = null;
 
-    constructor(user: User, sessionResolver: SessionResolver) {
-        this.user = user;
+    // Computed then cached for use in sendDM
+    private dmChannel: DMChannel | null = null;
+
+    constructor(userId: DraftUserId, discordUserResolver: DiscordUserResolver, sessionResolver: SessionResolver) {
+        this.userId = userId;
+        this.discordUserResolver = discordUserResolver;
+
         this.sessionResolver = sessionResolver;
     }
 
+    private getDiscordUser(): User | undefined {
+        return this.discordUserResolver.resolve(this.userId);
+    }
 
     getUserId(): DraftUserId {
-        return this.user.id;
+        return this.userId;
     }
 
     getDisplayName(): string {
-        return this.user.username;
-    }
-
-    async sendDM(message: string | null) {
-        if (!message) {
-            return;
-        }
-        await (await this.user.createDM()).send(message);
+        return this.getDiscordUser()?.username || "<UNABLE TO GET USERNAME FROM DISCORD>";
     }
 
     setCreatedSessionId(createdSessionId: SessionId | null) {
         this.createdSessionId = createdSessionId;
     }
-
     getCreatedSessionId(): SessionId | null {
         return this.createdSessionId;
     }
@@ -120,5 +123,19 @@ export default class DraftUser {
         msg += `${session.toString(true, true)}\n`;
 
         await this.sendDM(msg);
+    }
+
+    async sendDM(message: string | null) {
+        if (!message) {
+            return;
+        }
+        const user = this.getDiscordUser();
+        if (!user) {
+            throw "Could not resolve Discord User in order to sendDM";
+        }
+        if (!this.dmChannel) {
+            this.dmChannel = await user.createDM();
+        }
+        await this.dmChannel.send(message);
     }
 }

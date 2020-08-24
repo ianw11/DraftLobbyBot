@@ -4,7 +4,7 @@ import Commands from './commands';
 import DraftServer from './models/DraftServer';
 import Session from './models/Session';
 import DraftUser from './models/DraftUser';
-import Context from './commands/types/Context';
+import Context, { ContextProps } from './commands/types/Context';
 
 //
 // To set your Discord Bot Token, take a look at env.ts for an explanation (and get ready to make an env.json)
@@ -75,10 +75,17 @@ function onMessage(client: Client) {
                 throw "Error with Discord.js - guild not included in message"
             }
             const draftServer = getDraftServer(guild);
-            if (!draftServer) {
 
+            const props: ContextProps = {
+                env: env,
+                client: client,
+                draftServer: draftServer,
+                user: author,
+                parameters: split,
+                message: message
             }
-            const context = new Context(env, client, draftServer, author, split, message);
+            const context = new Context(props);
+
             try {
                 await command.execute(context);
             } catch (e) {
@@ -94,15 +101,13 @@ function onMessage(client: Client) {
 type ReactionCallback = (p1: DraftUser, p2: Session) => Promise<void>;
 type CurriedReactionCallback = (r: MessageReaction, u: User | PartialUser) => Promise<void>;
 function onReaction(callback: ReactionCallback): CurriedReactionCallback {
-    return async (reaction: MessageReaction, rawUser: unknown) => {
-        if (rawUser !instanceof User) return;
-        const user: User = rawUser as User;
-        if (user.bot) return;
+    return async (reaction: MessageReaction, rawUser: User | PartialUser) => {
+        if (rawUser.bot) return;
 
         const [draftServer, session] = getServerAndSession(reaction);
 
         if (session) {
-            const draftUser = draftServer.getDraftUser(user);
+            const draftUser = draftServer.getDraftUser(rawUser);
 
             try {
                 await callback(draftUser, session);

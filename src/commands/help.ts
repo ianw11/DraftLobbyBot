@@ -5,13 +5,18 @@ import Context from "./types/Context";
 
 export default class HelpCommand implements Command {
     private message: string = '';
+    private followup: string = '';
 
     async execute(context: Context) {
         if (!this.message) {
-            this.buildMessage(context);
+            this.message = this.buildMessage(context);
+        }
+        if (!this.followup) {
+            this.followup = this.buildFollowup();
         }
 
         await context.draftUser.sendDM(this.message);
+        await context.draftUser.sendDM(this.followup);
     }
     help(): string {
         return 'Displays this message';
@@ -44,8 +49,16 @@ export default class HelpCommand implements Command {
             msg += '\n';
         });
 
-        msg += "\nAs a reminder, I require dates in the format: `mm dd hh:mm` (eg. 8 22 17:30 means Aug 22 at 5:30pm) and the hour is in 24-hour format.\nYes I realize it's a hassle, thank you for putting up with it";
+        return msg;
+    }
 
-        this.message = msg;
+    private buildFollowup() {
+        let msg = [];
+
+        msg.push("As a reminder, I require dates in the format: `mm dd hh:mm` and the hour is in 24-hour format.");
+        msg.push("For example, `edit date 8 22 17:30` means Aug 22 at 5:30pm");
+        msg.push("Yes I realize it's a hassle, thank you for putting up with it");
+
+        return msg.join("\n");
     }
 }

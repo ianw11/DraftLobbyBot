@@ -17,7 +17,7 @@ let user: DraftUser;
 
 beforeEach(() => {
     mocks = setup();
-    user = new DraftUser(mocks.mockDiscordUser, mocks.sessionResolver);
+    user = new DraftUser(constants.DISCORD_USER_ID, mocks.discordUserResolver, mocks.sessionResolver);
 });
 afterEach(() => {
     // None for now...

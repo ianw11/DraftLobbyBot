@@ -1,4 +1,4 @@
-import {removeFromArray} from '../src/Utils';
+import {removeFromArray, parseDate} from '../src/Utils';
 import { expect } from 'chai';
 
 describe('test removeFromArray', () => {
@@ -36,5 +36,16 @@ describe('test removeFromArray', () => {
         const removed = removeFromArray('a', arr);
         expect(removed).eq(true);
         expect(arr).deep.equals(['b']);
+    });
+});
+
+describe.skip('test parsing date', () => {
+    it('parses a fully formatted date', () => {
+        const dateString = '2011-10-10T14:48:00.000+09:00';
+        const expectedDate = Date.parse(dateString);
+
+        const date = parseDate([dateString]);
+
+        expect(date).to.deep.equal(expectedDate);
     });
 });

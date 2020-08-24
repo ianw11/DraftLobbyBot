@@ -8,7 +8,7 @@ export type SessionId = string;
 
 export interface SessionParameters {
     name: string;
-    maxNumPlayers: number;
+    sessionCapacity: number;
     description: string;
     date?: Date | null; // The lack of this field indicates the Session intends to start immediately - aka probably an ad-hoc draft
     fireWhenFull: boolean; // Or should we wait for the Session owner to run the StartCommand
@@ -18,14 +18,16 @@ export interface SessionParameters {
 export const DEFAULT_PARAMS: SessionParameters = Object.freeze({
     name: '',
     url: '',
-    maxNumPlayers: 8,
+    sessionCapacity: 8,
     description: "<NO DESCRIPTION PROVIDED>",
     fireWhenFull: true
 });
 
+export type SessionConstructorParameter = SessionParameters & {ownerId?: string};
+
 export default class Session {
     // Maintained only so the owner can't leave the draft instead of deleting it
-    private readonly ownerId: DraftUserId;
+    private readonly ownerId?: DraftUserId;
 
     private readonly message: Message;
     readonly sessionId: SessionId;
@@ -36,26 +38,43 @@ export default class Session {
     private readonly waitlistedPlayers: DraftUserId[] = [];
 
     private readonly params: SessionParameters;
+    private sessionClosed: boolean = false;
 
-    constructor (ownerId: DraftUserId, message: Message, userResolver: UserResolver, params?: Partial<SessionParameters>) {
-        this.ownerId = ownerId;
+    constructor (message: Message, userResolver: UserResolver, params?: Partial<SessionConstructorParameter>) {
         this.message = message;
         this.sessionId = message.id;
 
         this.userResolver = userResolver;
 
+        if (params) {
+            this.ownerId = params.ownerId;
+        }
+
+        const defaultName = this.ownerId ? `${this.userResolver.resolve(this.ownerId).getDisplayName()}'s Draft` : `Server scheduled draft`;
+
         this.params = {
             ...DEFAULT_PARAMS,
             ...{
-                name: `${this.userResolver.resolve(ownerId).getDisplayName()}'s Draft`,
+                name: defaultName,
                 url: `https://mtgadraft.herokuapp.com/?session=${hri.random()}`
             },
             ...(params || {})
         };
     }
 
-    getParameters(): SessionParameters {
-        return {...this.params};
+    // These two methods would be good candidates as getter methods
+    // but the Substitute mocking testing framework doesn't allow
+    // for getter methods to be easily mocked.
+
+    getNumConfirmed() {
+        return this.joinedPlayers.length;
+    }
+    getNumWaitlisted() {
+        return this.waitlistedPlayers.length;
+    }
+    
+    getWaitlistIndexOf(draftUserId: DraftUserId): number {
+        return this.waitlistedPlayers.indexOf(draftUserId);
     }
 
     async setName(name: string) {
@@ -66,27 +85,27 @@ export default class Session {
         return this.params.name;
     }
 
-    async setUrl(url: string) {
+    setUrl(url: string) {
         this.params.url = url;
     }
     getUrl() {
         return this.params.url;
     }
 
-    async setMaxNumPlayers(maxNumPlayers: number) {
-        if (maxNumPlayers < 1)  {
+    async setSessionCapacity(sessionCapacity: number) {
+        if (sessionCapacity < 1)  {
             throw new Error("Minimum allowed number of players is 1");
         }
-        if (maxNumPlayers < this.getNumConfirmed()) {
-            throw `There are ${this.getNumConfirmed()} people already confirmed - some of them will need to leave before I can lower to ${maxNumPlayers}`;
+        if (sessionCapacity < this.getNumConfirmed()) {
+            throw `There are ${this.getNumConfirmed()} people already confirmed - some of them will need to leave before I can lower to ${sessionCapacity}`;
         }
 
-        this.params.maxNumPlayers = maxNumPlayers;
+        this.params.sessionCapacity = sessionCapacity;
         await this.updateMessage();
         await this.fireIfAble();
     }
-    getMaxNumPlayers() {
-        return this.params.maxNumPlayers;
+    getSessionCapacity() {
+        return this.params.sessionCapacity;
     }
 
     async setDescription(description: string) {
@@ -112,25 +131,17 @@ export default class Session {
     getFireWhenFull() {
         return this.params.fireWhenFull;
     }
-    
-
-    getNumConfirmed() {
-        return this.joinedPlayers.length;
-    }
-    getNumWaitlisted() {
-        return this.waitlistedPlayers.length;
-    }
-
-    getWaitlistIndexOf(draftUserId: DraftUserId): number {
-        return this.waitlistedPlayers.indexOf(draftUserId);
-    }
 
 
     canAddPlayers() : boolean {
-        return this.getNumConfirmed() < this.params.maxNumPlayers;
+        return !this.sessionClosed && this.getNumConfirmed() < this.params.sessionCapacity;
     }
 
     async addPlayer(draftUser: DraftUser) {
+        if (this.sessionClosed) {
+            throw "Can't join session - already closed";
+        };
+
         const userId = draftUser.getUserId();
 
         if (this.joinedPlayers.indexOf(userId) !== -1 || this.waitlistedPlayers.indexOf(userId) !== -1) {
@@ -183,18 +194,6 @@ export default class Session {
     }
 
 
-    async terminate(started: boolean = false) {
-        const callback = (draftUserId: DraftUserId) => this.userResolver.resolve(draftUserId).sessionClosed(this, started);
-        this.joinedPlayers.forEach(callback);
-        this.waitlistedPlayers.forEach(callback);
-
-        await this.message.delete();
-    }
-
-    private async updateMessage() {
-        await this.message.edit(`${this.toString(true)}\n\nTap the reaction below to register and again to unregister`);
-    }
-
     private async fireIfAble() {
         if (!this.params.fireWhenFull || this.canAddPlayers()) {
             return;
@@ -202,21 +201,50 @@ export default class Session {
 
         await this.terminate(true);
     }
+    
+    async terminate(started: boolean = false) {
+        this.sessionClosed = true;
 
-    buildAttendanceString() {
-        const numJoined = this.joinedPlayers.length;
-        const numWaitlisted = this.waitlistedPlayers.length;
-        const {maxNumPlayers, fireWhenFull} = this.params;
-        return `Number joined: ${numJoined} <> Capacity: ${maxNumPlayers} <> ${fireWhenFull ? "Draft will launch when capacity is reached" : `Waitlisted: ${numWaitlisted}`}`;
+        // Notify both joined and waitlisted that this Session is closed
+        const callback = (draftUserId: DraftUserId) => this.userResolver.resolve(draftUserId).sessionClosed(this, started);
+        this.joinedPlayers.forEach(callback);
+        this.waitlistedPlayers.forEach(callback);
+
+        // Clean up the announcement channel a bit
+        await this.message.delete();
     }
 
+    private async updateMessage() {
+        await this.message.edit(`${this.toString(true)}\n\nTap the reaction below to register and again to unregister`);
+    }
+
+
+    buildAttendanceString(provideOwnerInformation = false) {
+        const numJoined = this.joinedPlayers.length;
+        const numWaitlisted = this.waitlistedPlayers.length;
+        const {sessionCapacity, fireWhenFull} = this.params;
+        let msg = `Number joined: ${numJoined} <> Capacity: ${sessionCapacity} <> ${fireWhenFull ? "Draft will launch when capacity is reached" : `Waitlisted: ${numWaitlisted}`}`;
+
+        if (provideOwnerInformation) {
+            msg += "\n**CURRENTLY JOINED**\n";
+            this.joinedPlayers.forEach((draftUserId: DraftUserId) => {
+                msg += `- ${this.userResolver.resolve(draftUserId).getDisplayName()}`;
+            });
+        }
+
+        return msg;
+    }
+
+    /**
+     * The  joined user listing will only be printed if both multiline and provideOwnerInformation is turned on
+     */
     toString(multiline = false, provideOwnerInformation = false): string {
         const linebreak = multiline ? '\n' : '  ';
         const {name, date, description} = this.params;
 
         const when = date ? `Scheduled for: ___${date.toString()}___` : "Ad-hoc event - Join now!";
         
-        return `**${name}**${linebreak}${when}${multiline ? linebreak : ' ['}${this.buildAttendanceString()}${multiline ? linebreak : '] -- '}${description}`;
+        return `**${name}**${linebreak}${when}${multiline ? linebreak : ' ['}${this.buildAttendanceString(multiline && provideOwnerInformation)}${multiline ? `${linebreak}#-#-#-#-#-#-#-#${linebreak}` : '] -- '}${description}`;
     }
 
     toOwnerString(includeWaitlist = false) {

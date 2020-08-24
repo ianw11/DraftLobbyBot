@@ -1,6 +1,6 @@
 import Session, {SessionId} from "./Session";
 import DraftUser from "./DraftUser";
-import { User, Message, TextChannel, Guild, GuildChannel } from "discord.js";
+import { User, Message, TextChannel, Guild, GuildChannel, PartialUser } from "discord.js";
 import env from "../env";
 
 export type DraftUserId = string;
@@ -17,6 +17,10 @@ export interface SessionResolver {
     resolve (sessionId: SessionId): Session;
 }
 
+export interface DiscordUserResolver {
+    resolve (userId: string): User | undefined;
+}
+
 export default class DraftServer {
     private sessions: {[messageId: string]: Session | undefined} = {};
     private users: {[userId: string]: DraftUser} = {};
@@ -25,12 +29,14 @@ export default class DraftServer {
 
     readonly userResolver: UserResolver = {resolve: (draftUserId: DraftUserId) => this.getDraftUserById(draftUserId)};
     readonly sessionResolver: SessionResolver = {resolve: (sessionId: SessionId) => this.getSession(sessionId)};
+    readonly discordUserResolver: DiscordUserResolver;
 
     private readonly EMOJI: string;
 
     constructor (guild: Guild) {
         this.EMOJI = env.EMOJI;
 
+        this.discordUserResolver = {resolve: (userId: string) => guild.member(userId)?.user };
         const {channels, name: guildName, id: guildId} = guild;
 
         let announcementChannel = null;
@@ -70,7 +76,7 @@ export default class DraftServer {
         const message = await this.announcementChannel.send("Creating session...");
 
         // Then build the actual Session object
-        const session = new Session(draftUser.getUserId(), message, this.userResolver, {date: date});
+        const session = new Session(message, this.userResolver, {date: date, ownerId: draftUser.getUserId()});
         
         // Persist the Session object
         this.sessions[session.sessionId] = session;
@@ -126,10 +132,10 @@ export default class DraftServer {
         throw "Could not find Session for the provided SessionId";
     }
 
-    getDraftUser(user: User): DraftUser {
+    getDraftUser(user: User | PartialUser): DraftUser {
         let draftUser = this.getDraftUserById(user.id, false);
         if (!draftUser) {
-            draftUser = new DraftUser(user, this.sessionResolver);
+            draftUser = new DraftUser(user.id, this.discordUserResolver, this.sessionResolver);
             this.users[user.id] = draftUser;
         }
         return draftUser;
