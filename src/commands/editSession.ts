@@ -3,24 +3,24 @@ import Context from "./types/Context";
 import { parseDate } from "../Utils";
 
 export default class EditSessionCommand implements Command {
-    async execute(context: Context) {
+    async execute(context: Context): Promise<void> {
         const sessionId = context.draftUser.getCreatedSessionId();
         if (!sessionId) {
-            throw "Unable to modify session - you haven't created one yet";
+            throw new Error("Unable to modify session - you haven't created one yet");
         }
 
         const session = context.sessionResolver.resolve(sessionId);
         if (!session) {
-            throw "SessionId found but resolver failed to find the Session";
+            throw new Error("SessionId found but resolver failed to find the Session");
         }
 
         if (context.parameters.length < 2) {
-            throw "Editing a session is done `edit <attribute> <value>` for example: `edit name My Cool Draft`.  For more information ask me for help from a server"
+            throw new Error("Editing a session is done `edit <attribute> <value>` for example: `edit name My Cool Draft`.  For more information ask me for help from a server");
         }
 
         const field = context.parameters.shift();
         if (!field) {
-            throw "Missing: the field you want to edit.  Check the help command for more information";
+            throw new Error("Missing: the field you want to edit.  Check the help command for more information");
         }
         const value = context.parameters.join(' ');
         const valueLower = value.toLocaleLowerCase();
@@ -55,15 +55,15 @@ export default class EditSessionCommand implements Command {
         }
     }
 
-    help() {
+    help(): string {
         return 'Edit attributes of your draft session.  Current attributes include: `name, capacity/max/num/players, d/description, date, fire/full, url`.  Use "clear" for date to set the draft to fire when full.';
     }
 
-    usage(invocation: string) {
+    usage(invocation: string): string {
         return `${invocation} <attribute> <new value>`;
     }
 
-    usageExample(invocation: string) {
+    usageExample(invocation: string): string {
         return `${invocation} d This is my new decription`;
     }
 }

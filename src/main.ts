@@ -33,7 +33,7 @@ function getServerAndSession(reaction: MessageReaction): [DraftServer, Session|n
 
     const {guild} = message;
     if (!guild) {
-        throw "Error with Discord - Guild not included in Message";
+        throw new Error("Error with Discord - Guild not included in Message");
     }
 
     const draftServer = getDraftServer(guild);
@@ -72,7 +72,7 @@ function onMessage(client: Client) {
         if (command) {
             const {guild, author} = message;
             if (!guild) {
-                throw "Error with Discord.js - guild not included in message"
+                throw new Error("Error with Discord.js - guild not included in message");
             }
             const draftServer = getDraftServer(guild);
 
@@ -123,7 +123,7 @@ function onReaction(callback: ReactionCallback): CurriedReactionCallback {
 // DISCORD CLIENT //
 ////////////////////
 
-export default function main() {
+export default function main(): void {
     const {DISCORD_BOT_TOKEN} = env;
     const client = new Client();
 

@@ -1,6 +1,10 @@
 #These keep .js and .js.map files out of view. 
 *.js
+!.eslintrc.js
+
 *.js.map
+
 node_modules
-forever.sh
+
+# This should be unique per user (see env.ts for more information)
 env.json

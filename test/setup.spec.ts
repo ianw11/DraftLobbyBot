@@ -54,7 +54,7 @@ export interface MocksInterface {
     mockDmChannel: SubstituteOf<DMChannel>,
     mockMessage: SubstituteOf<Message>,
     userGenerator: () => SubstituteOf<DraftUser>
-};
+}
 
 ////////////////////
 // TEST LIFECYCLE //
@@ -131,8 +131,8 @@ function persistUser(draftUser: SubstituteOf<DraftUser>): SubstituteOf<DraftUser
 }
 
 // We then take the user generator function and create 2 generators (one with overrides)
-const basicUserGenerator: Generator<SubstituteOf<DraftUser>, any, any> = uniqueUserGenerator();
-const customUserGenerator: Generator<SubstituteOf<DraftUser>, any, any> = uniqueUserGenerator(mockConstants.DISCORD_USER_ID, mockConstants.USERNAME);
+const basicUserGenerator: Generator<SubstituteOf<DraftUser>> = uniqueUserGenerator();
+const customUserGenerator: Generator<SubstituteOf<DraftUser>> = uniqueUserGenerator(mockConstants.DISCORD_USER_ID, mockConstants.USERNAME);
 // The generators are then wrapped in a persistance function and made available to test runners
 const generateBasicUser = () => persistUser(basicUserGenerator.next().value as SubstituteOf<DraftUser>);
 const generateCustomUser = () => persistUser(customUserGenerator.next().value as SubstituteOf<DraftUser>);
@@ -180,7 +180,7 @@ export default function setup(): MocksInterface {
         // The message used to announce a draft
         mockMessage: Substitute.for<Message>(),
 
-        sessionResolver: {resolve: (_) => {throw "NOT FULLY HOOKED UP"}} // Completed below
+        sessionResolver: {resolve: () => {throw new Error("NOT FULLY HOOKED UP")}} // Completed below
     };
 
     // With the main mocks done, hook up the overrides...

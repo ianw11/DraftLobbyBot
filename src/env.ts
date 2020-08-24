@@ -1,4 +1,6 @@
 const ENV_JSON_FILE_LOCATION = '../env.json'; // Edit this if needed, though I don't recommend it
+
+// eslint-disable-next-line @typescript-eslint/no-var-requires
 const ENV_JSON = require(ENV_JSON_FILE_LOCATION);
 
 /**

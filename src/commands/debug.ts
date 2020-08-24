@@ -4,7 +4,7 @@ import Context from "./types/Context";
 export default class DebugCommand implements Command {
     exclude = true;
 
-    async execute(context: Context) {
+    async execute(context: Context): Promise<void> {
         console.log(context.parameters);
     }
 }

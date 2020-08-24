@@ -1,7 +1,4 @@
-import * as chai from "chai";
-import * as chaiAsPromised from 'chai-as-promised';
-chai.use(chaiAsPromised);
-const {assert, expect} = chai;
+import {expect, assert} from "../chaiAsync";
 import setup, { MocksInterface, mockConstants } from "../setup.spec";
 import Session, {DEFAULT_PARAMS} from "../../src/models/Session";
 import { Arg, SubstituteOf } from "@fluffy-spoon/substitute";

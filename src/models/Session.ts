@@ -2,6 +2,8 @@ import { Message } from "discord.js";
 import DraftUser from "./DraftUser";
 import { removeFromArray } from "../Utils";
 import { UserResolver, DraftUserId } from "./DraftServer";
+
+// eslint-disable-next-line @typescript-eslint/no-var-requires
 const hri = require("human-readable-ids").hri; // JS Library
 
 export type SessionId = string;
@@ -10,7 +12,7 @@ export interface SessionParameters {
     name: string;
     sessionCapacity: number;
     description: string;
-    date?: Date | null; // The lack of this field indicates the Session intends to start immediately - aka probably an ad-hoc draft
+    date?: Date; // The lack of this field indicates the Session intends to start immediately - aka probably an ad-hoc draft
     fireWhenFull: boolean; // Or should we wait for the Session owner to run the StartCommand
     url: string;
 }
@@ -38,7 +40,7 @@ export default class Session {
     private readonly waitlistedPlayers: DraftUserId[] = [];
 
     private readonly params: SessionParameters;
-    private sessionClosed: boolean = false;
+    private sessionClosed = false;
 
     constructor (message: Message, userResolver: UserResolver, params?: Partial<SessionConstructorParameter>) {
         this.message = message;
@@ -66,10 +68,10 @@ export default class Session {
     // but the Substitute mocking testing framework doesn't allow
     // for getter methods to be easily mocked.
 
-    getNumConfirmed() {
+    getNumConfirmed(): number {
         return this.joinedPlayers.length;
     }
-    getNumWaitlisted() {
+    getNumWaitlisted(): number {
         return this.waitlistedPlayers.length;
     }
     
@@ -77,58 +79,58 @@ export default class Session {
         return this.waitlistedPlayers.indexOf(draftUserId);
     }
 
-    async setName(name: string) {
+    async setName(name: string): Promise<void> {
         this.params.name = name;
         await this.updateMessage();
     }
-    getName() {
+    getName(): string {
         return this.params.name;
     }
 
-    setUrl(url: string) {
+    setUrl(url: string): void {
         this.params.url = url;
     }
-    getUrl() {
+    getUrl(): string {
         return this.params.url;
     }
 
-    async setSessionCapacity(sessionCapacity: number) {
+    async setSessionCapacity(sessionCapacity: number): Promise<void> {
         if (sessionCapacity < 1)  {
             throw new Error("Minimum allowed number of players is 1");
         }
         if (sessionCapacity < this.getNumConfirmed()) {
-            throw `There are ${this.getNumConfirmed()} people already confirmed - some of them will need to leave before I can lower to ${sessionCapacity}`;
+            throw new Error(`There are ${this.getNumConfirmed()} people already confirmed - some of them will need to leave before I can lower to ${sessionCapacity}`);
         }
 
         this.params.sessionCapacity = sessionCapacity;
         await this.updateMessage();
         await this.fireIfAble();
     }
-    getSessionCapacity() {
+    getSessionCapacity(): number {
         return this.params.sessionCapacity;
     }
 
-    async setDescription(description: string) {
+    async setDescription(description: string): Promise<void> {
         this.params.description = description;
         await this.updateMessage();
     }
-    getDescription() {
+    getDescription(): string {
         return this.params.description;
     }
 
-    async setDate(date: Date | null) {
+    async setDate(date?: Date): Promise<void> {
         this.params.date = date;
         await this.updateMessage();
     }
-    getDate() {
+    getDate(): Date | undefined {
         return this.params.date;
     }
 
-    async setFireWhenFull(fire: boolean) {
+    async setFireWhenFull(fire: boolean): Promise<void> {
         this.params.fireWhenFull = fire;
         await this.updateMessage();
     }
-    getFireWhenFull() {
+    getFireWhenFull(): boolean {
         return this.params.fireWhenFull;
     }
 
@@ -137,15 +139,15 @@ export default class Session {
         return !this.sessionClosed && this.getNumConfirmed() < this.params.sessionCapacity;
     }
 
-    async addPlayer(draftUser: DraftUser) {
+    async addPlayer(draftUser: DraftUser): Promise<void> {
         if (this.sessionClosed) {
-            throw "Can't join session - already closed";
-        };
+            throw new Error("Can't join session - already closed");
+        }
 
         const userId = draftUser.getUserId();
 
         if (this.joinedPlayers.indexOf(userId) !== -1 || this.waitlistedPlayers.indexOf(userId) !== -1) {
-            throw "User already joined";
+            throw new Error("User already joined");
         }
 
         if (this.canAddPlayers()) {
@@ -160,11 +162,11 @@ export default class Session {
         await this.fireIfAble();
     }
 
-    async removePlayer(draftUser: DraftUser) {
+    async removePlayer(draftUser: DraftUser): Promise<void> {
         const userId = draftUser.getUserId();
 
         if (userId === this.ownerId) {
-            throw "Owner trying to leave - use `$delete` to delete draft";
+            throw new Error("Owner trying to leave - use `$delete` to delete draft");
         }
 
         const joinedIndex = this.joinedPlayers.indexOf(userId);
@@ -202,7 +204,7 @@ export default class Session {
         await this.terminate(true);
     }
     
-    async terminate(started: boolean = false) {
+    async terminate(started = false): Promise<void> {
         this.sessionClosed = true;
 
         // Notify both joined and waitlisted that this Session is closed
@@ -219,7 +221,7 @@ export default class Session {
     }
 
 
-    buildAttendanceString(provideOwnerInformation = false) {
+    buildAttendanceString(provideOwnerInformation = false): string {
         const numJoined = this.joinedPlayers.length;
         const numWaitlisted = this.waitlistedPlayers.length;
         const {sessionCapacity, fireWhenFull} = this.params;
@@ -247,7 +249,7 @@ export default class Session {
         return `**${name}**${linebreak}${when}${multiline ? linebreak : ' ['}${this.buildAttendanceString(multiline && provideOwnerInformation)}${multiline ? `${linebreak}#-#-#-#-#-#-#-#${linebreak}` : '] -- '}${description}`;
     }
 
-    toOwnerString(includeWaitlist = false) {
+    toOwnerString(includeWaitlist = false): string {
         const reducer = (accumulator: DraftUserId, current: string) => `${accumulator}\n- ${this.userResolver.resolve(current).getDisplayName()}`;
         const joinedUsernames = `\nJoined:${this.joinedPlayers.reduce(reducer, '')}`;
         const waitlistedUsernames = includeWaitlist ? `\nWaitlist:${this.waitlistedPlayers.reduce(reducer, '')}` : '';

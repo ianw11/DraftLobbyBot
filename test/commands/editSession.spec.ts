@@ -1,14 +1,15 @@
 
 import _EditSession from "../../src/commands/editSession";
-import setup, { buildContext } from "../setup.spec";
+import { buildContext } from "../setup.spec";
+import { expect } from "../chaiAsync";
 
 const EditSession = new _EditSession();
 
-describe('basic tests', () => {
-    it('', () => {
+describe('basic EditSession tests', () => {
+    it('template test', async () => {
         const context = buildContext();
-        const {} = setup();
 
-        EditSession.execute(context);
+        expect(EditSession.execute(context)).to.be.rejected;
+        expect(async () => await EditSession.execute(context)).to.throw;
     });
 });

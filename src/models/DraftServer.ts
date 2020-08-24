@@ -37,7 +37,7 @@ export default class DraftServer {
         this.EMOJI = env.EMOJI;
 
         this.discordUserResolver = {resolve: (userId: string) => guild.member(userId)?.user };
-        const {channels, name: guildName, id: guildId} = guild;
+        const {channels, name: guildName} = guild;
 
         let announcementChannel = null;
         channels.cache.each((channel: GuildChannel) => {
@@ -63,7 +63,7 @@ export default class DraftServer {
         }
     }
 
-    async createSession(draftUser: DraftUser, date?: Date) {
+    async createSession(draftUser: DraftUser, date?: Date): Promise<void> {
         if (!this.announcementChannel) {
             return;
         }
@@ -89,17 +89,17 @@ export default class DraftServer {
         await message.react(this.EMOJI);
     }
 
-    async startSession(draftUser: DraftUser) {
+    async startSession(draftUser: DraftUser): Promise<void> {
         await this.terminate(draftUser, true);
     }
 
-    async closeSession(draftUser: DraftUser) {
+    async closeSession(draftUser: DraftUser): Promise<void> {
         await this.terminate(draftUser);
     }
 
-    private async terminate(draftUser: DraftUser, started: boolean = false) {
+    private async terminate(draftUser: DraftUser, started = false) {
         if (!draftUser.getCreatedSessionId()) {
-            throw "You don't have any session to terminate";
+            throw new Error("You don't have any session to terminate");
         }
 
         const session = this.getSessionFromDraftUser(draftUser);
@@ -129,7 +129,7 @@ export default class DraftServer {
         if (session) {
             return session;
         }
-        throw "Could not find Session for the provided SessionId";
+        throw new Error("Could not find Session for the provided SessionId");
     }
 
     getDraftUser(user: User | PartialUser): DraftUser {
@@ -146,6 +146,6 @@ export default class DraftServer {
         if (user || !shouldThrow) {
             return user;
         }
-        throw "Could not find DraftUser for the provided DraftUserId";
+        throw new Error("Could not find DraftUser for the provided DraftUserId");
     }
 }

@@ -8,9 +8,9 @@ export function removeFromArray(value: string, arr: string[]): boolean {
     return removed;
 }
 
-export function parseDate(parameters: string[]): Date | null {
+export function parseDate(parameters: string[]): Date | undefined {
     const now = new Date();
-    let date: Date | null = null;
+    let date: Date | undefined;
     if (parameters.length === 1) {
         if (parameters[0].toLocaleLowerCase() === 'clear') {
             // No-op

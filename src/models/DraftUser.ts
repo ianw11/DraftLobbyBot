@@ -37,44 +37,44 @@ export default class DraftUser {
         return this.getDiscordUser()?.username || "<UNABLE TO GET USERNAME FROM DISCORD>";
     }
 
-    setCreatedSessionId(createdSessionId: SessionId | null) {
+    setCreatedSessionId(createdSessionId: SessionId | null): void {
         this.createdSessionId = createdSessionId;
     }
     getCreatedSessionId(): SessionId | null {
         return this.createdSessionId;
     }
 
-    setSessionResolver(sessionResolver: SessionResolver) {
+    setSessionResolver(sessionResolver: SessionResolver): void {
         this.sessionResolver = sessionResolver;
     }
 
-    async addedToSession(session: Session) {
+    async addedToSession(session: Session): Promise<void> {
         this.joinedSessions.push(session.sessionId);
         await this.sendDM(`You're confirmed for ${session.getName()}`);
     }
 
-    async removedFromSession(session: Session) {
+    async removedFromSession(session: Session): Promise<void> {
         removeFromArray(session.sessionId, this.joinedSessions);
         await this.sendDM(`You've been removed from ${session.getName()}`);
     }
 
-    async upgradedFromWaitlist(session: Session) {
+    async upgradedFromWaitlist(session: Session): Promise<void> {
         removeFromArray(session.sessionId, this.waitlistedSessions);
         this.joinedSessions.push(session.sessionId);
         await this.sendDM(`You've been upgraded from the waitlist for ${session.getName()}`);
     }
 
-    async addedToWaitlist(session: Session) {
+    async addedToWaitlist(session: Session): Promise<void> {
         this.waitlistedSessions.push(session.sessionId);
         await this.sendDM(`You've been waitlisted for ${session.getName()}.  You're in position: ${session.getNumWaitlisted()}`);
     }
 
-    async removedFromWaitlist(session: Session) {
+    async removedFromWaitlist(session: Session): Promise<void> {
         removeFromArray(session.sessionId, this.waitlistedSessions);
         await this.sendDM(`You've been removed from the waitlist for ${session.getName()}`);
     }
 
-    async sessionClosed(session: Session, startedNormally: boolean = true) {
+    async sessionClosed(session: Session, startedNormally = true): Promise<void> {
         removeFromArray(session.sessionId, this.joinedSessions);
         const waitlisted = removeFromArray(session.sessionId, this.waitlistedSessions);
 
@@ -89,7 +89,7 @@ export default class DraftUser {
         }
     }
 
-    async listSessions() {
+    async listSessions(): Promise<void> {
         let msg = "\n**Sessions you are confirmed for:**\n";
 
         const callback = (includePlace: boolean) => {
@@ -112,7 +112,7 @@ export default class DraftUser {
         await this.sendDM(msg);
     }
 
-    async printOwnedSessionInfo() {
+    async printOwnedSessionInfo(): Promise<void> {
         if (!this.createdSessionId) {
             await this.sendDM("Cannot send info - you haven't created a draft session");
             return;
@@ -125,13 +125,13 @@ export default class DraftUser {
         await this.sendDM(msg);
     }
 
-    async sendDM(message: string | null) {
+    async sendDM(message: string | null): Promise<void> {
         if (!message) {
             return;
         }
         const user = this.getDiscordUser();
         if (!user) {
-            throw "Could not resolve Discord User in order to sendDM";
+            throw new Error("Could not resolve Discord User in order to sendDM");
         }
         if (!this.dmChannel) {
             this.dmChannel = await user.createDM();
