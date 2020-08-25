@@ -16,7 +16,8 @@ jobs:
 
     strategy:
       matrix:
-        node-version: [10.x, 12.x, 14.x]
+        # Definitely build for 12, leaving 14 in case we want to upgrade
+        node-version: [12.x, 14.x]
 
     steps:
     - uses: actions/checkout@v2
