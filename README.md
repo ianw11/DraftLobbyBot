@@ -1,3 +1,5 @@
+![Build Status](https://github.com/ianw11/DraftLobbyBot/workflows/UnitTests/badge.svg)
+
 Download git tool
 Clone code
 npm install
