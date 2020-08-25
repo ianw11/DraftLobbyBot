@@ -1,31 +1,20 @@
+import {SessionParameters, SessionId, SessionConstructorParameter} from '../types/SessionTypes';
+import ENV, {buildSessionParameters} from '../core/EnvBase';
 import { Message } from "discord.js";
 import DraftUser from "./DraftUser";
 import { removeFromArray } from "../Utils";
-import { UserResolver, DraftUserId } from "./DraftServer";
+import { UserResolver, DraftUserId } from "../types/DraftServerTypes";
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const hri = require("human-readable-ids").hri; // JS Library
 
-export type SessionId = string;
+const DIVIDER = " - - - - - - - - - - ";
 
-export interface SessionParameters {
-    name: string;
-    sessionCapacity: number;
-    description: string;
-    date?: Date; // The lack of this field indicates the Session intends to start immediately - aka probably an ad-hoc draft
-    fireWhenFull: boolean; // Or should we wait for the Session owner to run the StartCommand
-    url: string;
-}
-
-export const DEFAULT_PARAMS: SessionParameters = Object.freeze({
-    name: '',
-    url: '',
-    sessionCapacity: 8,
-    description: "<NO DESCRIPTION PROVIDED>",
-    fireWhenFull: true
-});
-
-export type SessionConstructorParameter = SessionParameters & {ownerId?: string};
+export {
+    SessionId,
+    SessionParameters,
+    SessionConstructorParameter
+};
 
 export default class Session {
     // Maintained only so the owner can't leave the draft instead of deleting it
@@ -42,7 +31,7 @@ export default class Session {
     private readonly params: SessionParameters;
     private sessionClosed = false;
 
-    constructor (message: Message, userResolver: UserResolver, params?: Partial<SessionConstructorParameter>) {
+    constructor (message: Message, userResolver: UserResolver, env: ENV, params?: Partial<SessionConstructorParameter>) {
         this.message = message;
         this.sessionId = message.id;
 
@@ -52,13 +41,12 @@ export default class Session {
             this.ownerId = params.ownerId;
         }
 
-        const defaultName = this.ownerId ? `${this.userResolver.resolve(this.ownerId).getDisplayName()}'s Draft` : `Server scheduled draft`;
+        const defaultName = this.ownerId ? `${this.userResolver.resolve(this.ownerId).getDisplayName()}'s Draft` : env.DEFAULT_SESSION_NAME;
 
         this.params = {
-            ...DEFAULT_PARAMS,
+            ...buildSessionParameters(env),
             ...{
-                name: defaultName,
-                url: `https://mtgadraft.herokuapp.com/?session=${hri.random()}`
+                name: defaultName
             },
             ...(params || {})
         };
@@ -87,10 +75,13 @@ export default class Session {
         return this.params.name;
     }
 
-    setUrl(url: string): void {
+    setUrl(url?: string): void {
         this.params.url = url;
     }
     getUrl(): string {
+        if (!this.params.url) {
+            this.params.url = `https://mtgadraft.herokuapp.com/?session=${hri.random()}`;
+        }
         return this.params.url;
     }
 
@@ -217,7 +208,7 @@ export default class Session {
     }
 
     private async updateMessage() {
-        await this.message.edit(`${this.toString(true)}\n\nTap the reaction below to register and again to unregister`);
+        await this.message.edit(`${this.toString(true)}\n${DIVIDER}\nTap the reaction below to register and again to unregister`);
     }
 
 
@@ -246,7 +237,7 @@ export default class Session {
 
         const when = date ? `Scheduled for: ___${date.toString()}___` : "Ad-hoc event - Join now!";
         
-        return `**${name}**${linebreak}${when}${multiline ? linebreak : ' ['}${this.buildAttendanceString(multiline && provideOwnerInformation)}${multiline ? `${linebreak}#-#-#-#-#-#-#-#${linebreak}` : '] -- '}${description}`;
+        return `**${name}**${linebreak}${when}${multiline ? linebreak : ' ['}${this.buildAttendanceString(multiline && provideOwnerInformation)}${multiline ? `${linebreak}${DIVIDER}${linebreak}` : '] -- '}${description}`;
     }
 
     toOwnerString(includeWaitlist = false): string {

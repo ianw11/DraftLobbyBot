@@ -1,7 +1,7 @@
-import { User, DMChannel } from "discord.js";
+import { DraftUserId, SessionResolver, DiscordUserResolver } from "../types/DraftServerTypes";
 import Session, {SessionId} from "./Session";
+import { User, DMChannel } from "discord.js";
 import {removeFromArray} from "../Utils";
-import { DraftUserId, SessionResolver, DiscordUserResolver } from "./DraftServer";
 
 export default class DraftUser {
     private readonly userId: DraftUserId;

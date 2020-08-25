@@ -1,9 +1,9 @@
 import Substitute, { SubstituteOf } from "@fluffy-spoon/substitute";
-import Session, { SessionId, SessionConstructorParameter } from "../src/models/Session";
-import DraftServer, { SessionResolver, UserResolver, DraftUserId, DiscordUserResolver } from "../src/models/DraftServer";
+import Session, {SessionId, SessionConstructorParameter} from "../src/models/Session";
+import DraftServer, {DraftUserId, UserResolver, SessionResolver, DiscordUserResolver} from "../src/models/DraftServer";
 import { DMChannel, User, Message, Client } from "discord.js";
 import DraftUser from "../src/models/DraftUser";
-import { ENV } from "../src/env";
+import ENV, {DEFAULTS} from "../src/core/EnvBase";
 import Context from "../src/commands/types/Context";
 
 /*
@@ -56,6 +56,10 @@ export interface MocksInterface {
     userGenerator: () => SubstituteOf<DraftUser>
 }
 
+export const mockEnv: ENV = {...DEFAULTS, ...{
+    DISCORD_BOT_TOKEN: "MOCK DISCORD BOT TOKEN"
+}};
+
 ////////////////////
 // TEST LIFECYCLE //
 ////////////////////
@@ -87,12 +91,11 @@ function buildMockDiscordUser(id: string, username: string): SubstituteOf<User> 
 
 // This method is also exported!
 export function buildContext(parameters: string[] = ["NO_PARAMS"]): Context {
-    const env = Substitute.for<ENV>();
     const client = Substitute.for<Client>();
     const draftServer = Substitute.for<DraftServer>();
     const message = Substitute.for<Message>();
     return new Context({
-        env: env,
+        env: mockEnv,
         client: client,
         draftServer: draftServer,
         user: builtMocks.mockDiscordUser,

@@ -1,8 +1,9 @@
 import {expect, assert} from "../chaiAsync";
-import setup, { MocksInterface, mockConstants } from "../setup.spec";
-import Session, {DEFAULT_PARAMS} from "../../src/models/Session";
+import setup, { MocksInterface, mockConstants, mockEnv } from "../setup.spec";
+import Session from "../../src/models/Session";
 import { Arg, SubstituteOf } from "@fluffy-spoon/substitute";
 import DraftUser from "../../src/models/DraftUser";
+import { buildSessionParameters } from "../../src/core/EnvBase";
 
 /*
 Could use testing:
@@ -18,20 +19,21 @@ let session: Session;
 
 beforeEach(() => {
     mocks = setup();
-    session = new Session(mocks.mockMessage, mocks.userResolver, mocks.mockSessionParameters);
+    session = new Session(mocks.mockMessage, mocks.userResolver, mockEnv, buildSessionParameters(mockEnv));
 })
 
 describe("Basic Session Checks", () => {
     it('has default parameters', () => {
         const {USERNAME, DISCORD_USER_ID} = constants;
-        session = new Session(mocks.mockMessage, mocks.userResolver, {ownerId: DISCORD_USER_ID});
+        const date = new Date();
+        session = new Session(mocks.mockMessage, mocks.userResolver, mockEnv, {ownerId: DISCORD_USER_ID, date: date});
         
         expect(session.getName()).to.equal(`${USERNAME}'s Draft`);
         assert(session.getUrl().startsWith(`https://mtgadraft.herokuapp.com/?session=`));
-        expect(session.getFireWhenFull()).to.equal(DEFAULT_PARAMS.fireWhenFull);
-        expect(session.getSessionCapacity()).to.equal(DEFAULT_PARAMS.sessionCapacity);
-        expect(session.getDescription()).to.equal(DEFAULT_PARAMS.description);
-        expect(session.getDate()).to.equal(DEFAULT_PARAMS.date);
+        expect(session.getFireWhenFull()).to.equal(mockEnv.DEFAULT_SESSION_FIRE_WHEN_FULL);
+        expect(session.getSessionCapacity()).to.equal(mockEnv.DEFAULT_SESSION_CAPACITY);
+        expect(session.getDescription()).to.equal(mockEnv.DEFAULT_SESSION_DESCRIPTION);
+        expect(session.getDate()).to.deep.equal(date);
     });
 
     it('can update parameters', async () => {

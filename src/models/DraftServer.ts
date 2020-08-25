@@ -1,27 +1,19 @@
+import ENV from '../core/EnvBase';
+import {DraftUserId, UserResolver, SessionResolver, DiscordUserResolver} from "../types/DraftServerTypes";
 import Session, {SessionId} from "./Session";
 import DraftUser from "./DraftUser";
 import { User, Message, TextChannel, Guild, GuildChannel, PartialUser } from "discord.js";
-import env from "../env";
 
-export type DraftUserId = string;
-
-// For both of these Resolvers, a name ('resolve') is given because the
-// current testing framework doesn't support mocking types
-// or an interface that's just a function
-
-export interface UserResolver {
-    resolve (draftUserId: DraftUserId): DraftUser;
-}
-
-export interface SessionResolver {
-    resolve (sessionId: SessionId): Session;
-}
-
-export interface DiscordUserResolver {
-    resolve (userId: string): User | undefined;
-}
+export {
+    DraftUserId,
+    UserResolver,
+    SessionResolver,
+    DiscordUserResolver
+};
 
 export default class DraftServer {
+    private readonly env: ENV;
+
     private sessions: {[messageId: string]: Session | undefined} = {};
     private users: {[userId: string]: DraftUser} = {};
     
@@ -31,10 +23,8 @@ export default class DraftServer {
     readonly sessionResolver: SessionResolver = {resolve: (sessionId: SessionId) => this.getSession(sessionId)};
     readonly discordUserResolver: DiscordUserResolver;
 
-    private readonly EMOJI: string;
-
-    constructor (guild: Guild) {
-        this.EMOJI = env.EMOJI;
+    constructor (guild: Guild, env: ENV) {
+        this.env = env;
 
         this.discordUserResolver = {resolve: (userId: string) => guild.member(userId)?.user };
         const {channels, name: guildName} = guild;
@@ -76,7 +66,7 @@ export default class DraftServer {
         const message = await this.announcementChannel.send("Creating session...");
 
         // Then build the actual Session object
-        const session = new Session(message, this.userResolver, {date: date, ownerId: draftUser.getUserId()});
+        const session = new Session(message, this.userResolver, this.env, {date: date, ownerId: draftUser.getUserId()});
         
         // Persist the Session object
         this.sessions[session.sessionId] = session;
@@ -86,7 +76,7 @@ export default class DraftServer {
         await session.addPlayer(draftUser);
 
         // Update and react to indicate we're ready to go
-        await message.react(this.EMOJI);
+        await message.react(this.env.EMOJI);
     }
 
     async startSession(draftUser: DraftUser): Promise<void> {
