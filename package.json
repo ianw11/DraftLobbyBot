@@ -8,7 +8,7 @@
     "start": "npm run lint && tsc && node server.js",
     "test": "npm run lint && npm run testWindows",
     "testWindows": "SET TS_NODE_PROJECT=test/tsconfig.json&& mocha -P test -r ts-node/register test/**/*.spec.ts",
-    "testUnix": "npm run lint && TS_NODE_PROJECT='test/tsconfig.json' mocha -P test -r ts-node/register **/*.spec.ts",
+    "testUnix": "npm run lint && TS_NODE_PROJECT='test/tsconfig.json' mocha -P test -r ts-node/register test/**/*.spec.ts test/*.spec.ts",
     "lint": "npx eslint . --ext .ts"
   },
   "dependencies": {
