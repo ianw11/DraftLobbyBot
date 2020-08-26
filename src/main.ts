@@ -1,5 +1,5 @@
-import ENV from './core/EnvBase';
-import {Client, Message, MessageReaction, User, Guild, PartialUser} from 'discord.js';
+import ENV, { replaceStringWithEnv } from './core/EnvBase';
+import {Client, Message, MessageReaction, User, Guild, PartialUser, ClientOptions, PresenceData} from 'discord.js';
 import Commands from './commands';
 import DraftServer from './models/DraftServer';
 import Session from './models/Session';
@@ -7,7 +7,7 @@ import DraftUser from './models/DraftUser';
 import Context, { ContextProps } from './commands/types/Context';
 
 //
-// To set your Discord Bot Token, take a look at env.ts for an explanation (and get ready to make an env.json)
+// To set your Discord Bot Token, take a look at ../env.ts for an explanation (hint: make an env.json)
 //
 
 // Join Link: https://discord.com/api/oauth2/authorize?client_id={YOUR_CLIENT_ID}&scope=bot&permissions=133200
@@ -41,7 +41,6 @@ function getServerAndSession(reaction: MessageReaction, env: ENV): [DraftServer,
     }
 
     const draftServer = getDraftServer(guild, env);
-
     const session = draftServer.getSessionFromMessage(message);
 
     return session ? [draftServer, session] : [draftServer, null];
@@ -130,8 +129,23 @@ function onReaction(env: ENV, callback: ReactionCallback): CurriedReactionCallba
 ////////////////////
 
 export default function main(env: ENV): void {
-    const {DISCORD_BOT_TOKEN} = env;
-    const client = new Client();
+    const {DISCORD_BOT_TOKEN, BOT_ACTIVITY, BOT_ACTIVITY_TYPE, MESSAGE_CACHE_SIZE} = env;
+
+    const presence: PresenceData = {
+        status: 'online',
+        afk: false,
+        activity: BOT_ACTIVITY ? {
+            type: BOT_ACTIVITY_TYPE || 'LISTENING',
+            name: replaceStringWithEnv(BOT_ACTIVITY, env)
+        } : { }
+    };
+
+    const DISCORD_CLIENT_OPTIONS: ClientOptions = {
+        messageCacheMaxSize: MESSAGE_CACHE_SIZE,
+        presence: presence
+    };
+
+    const client = new Client(DISCORD_CLIENT_OPTIONS);
 
     client.once('ready', async () => {
         env.log("Logged in successfully");

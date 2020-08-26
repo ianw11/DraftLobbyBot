@@ -1,14 +1,12 @@
 import {SessionParameters, SessionId, SessionConstructorParameter} from '../types/SessionTypes';
 import ENV, {buildSessionParameters} from '../core/EnvBase';
-import { Message } from "discord.js";
+import { Message, MessageEmbed, EmbedFieldData } from "discord.js";
 import DraftUser from "./DraftUser";
 import { removeFromArray } from "../Utils";
 import { UserResolver, DraftUserId } from "../types/DraftServerTypes";
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const hri = require("human-readable-ids").hri; // JS Library
-
-const DIVIDER = " - - - - - - - - - - ";
 
 export {
     SessionId,
@@ -22,6 +20,7 @@ export default class Session {
 
     private readonly message: Message;
     readonly sessionId: SessionId;
+    private readonly env: ENV;
 
     private readonly userResolver: UserResolver;
 
@@ -34,6 +33,7 @@ export default class Session {
     constructor (message: Message, userResolver: UserResolver, env: ENV, params?: Partial<SessionConstructorParameter>) {
         this.message = message;
         this.sessionId = message.id;
+        this.env = env;
 
         this.userResolver = userResolver;
 
@@ -41,10 +41,10 @@ export default class Session {
             this.ownerId = params.ownerId;
         }
 
-        const defaultName = this.ownerId ? `${this.userResolver.resolve(this.ownerId).getDisplayName()}'s Draft` : env.DEFAULT_SESSION_NAME;
+        const defaultName = this.ownerId ? `${this.userResolver.resolve(this.ownerId).getDisplayName()}'s Draft` : this.env.DEFAULT_SESSION_NAME;
 
         this.params = {
-            ...buildSessionParameters(env),
+            ...buildSessionParameters(this.env),
             ...{
                 name: defaultName
             },
@@ -208,42 +208,50 @@ export default class Session {
     }
 
     private async updateMessage() {
-        await this.message.edit(`${this.toString(true)}\n${DIVIDER}\nTap the reaction below to register and again to unregister`);
+        await this.message.edit(this.getEmbed());
     }
 
+    getEmbed(provideOwnerInformation?: boolean): MessageEmbed {
+        const {name, description, sessionCapacity, fireWhenFull, date} = this.params;
+        const numJoined = this.getNumConfirmed();
+        const numWaitlisted = this.getNumWaitlisted();
 
-    buildAttendanceString(provideOwnerInformation = false): string {
-        const numJoined = this.joinedPlayers.length;
-        const numWaitlisted = this.waitlistedPlayers.length;
-        const {sessionCapacity, fireWhenFull} = this.params;
-        let msg = `Number joined: ${numJoined} <> Capacity: ${sessionCapacity} <> ${fireWhenFull ? "Draft will launch when capacity is reached" : `Waitlisted: ${numWaitlisted}`}`;
+
+        const fields: EmbedFieldData[] = [
+            {
+                name: "When",
+                value: date ? date.toString() : 'Ad-hoc event - Join now!'
+            },
+            {
+                name: "Attendance",
+                value: `Number joined: ${numJoined} <> Capacity: ${sessionCapacity} <> ${fireWhenFull ? "Draft will launch when capacity is reached" : `Waitlisted: ${numWaitlisted}`}`
+            }
+        ];
 
         if (provideOwnerInformation) {
-            msg += "\n**CURRENTLY JOINED**\n";
-            this.joinedPlayers.forEach((draftUserId: DraftUserId) => {
-                msg += `- ${this.userResolver.resolve(draftUserId).getDisplayName()}`;
+            const reducer = (accumulator: string, current: DraftUserId) => `${accumulator}- ${this.userResolver.resolve(current).getDisplayName()}\n`;
+            fields.push({
+                name: "Currently Joined",
+                value: this.joinedPlayers.reduce(reducer, '')
+            });
+            if (this.waitlistedPlayers.length > 0) {
+                fields.push({
+                    name: "Currently Waitlisted",
+                    value: this.waitlistedPlayers.reduce(reducer, '')
+                });
+            }
+        } else {
+            fields.push({
+                name: "How to join",
+                value: `Simply react to this message using ${this.env.EMOJI} and I'll tell you if you're confirmed or just on the waitlist`
             });
         }
 
-        return msg;
-    }
-
-    /**
-     * The  joined user listing will only be printed if both multiline and provideOwnerInformation is turned on
-     */
-    toString(multiline = false, provideOwnerInformation = false): string {
-        const linebreak = multiline ? '\n' : '  ';
-        const {name, date, description} = this.params;
-
-        const when = date ? `Scheduled for: ___${date.toString()}___` : "Ad-hoc event - Join now!";
-        
-        return `**${name}**${linebreak}${when}${multiline ? linebreak : ' ['}${this.buildAttendanceString(multiline && provideOwnerInformation)}${multiline ? `${linebreak}${DIVIDER}${linebreak}` : '] -- '}${description}`;
-    }
-
-    toOwnerString(includeWaitlist = false): string {
-        const reducer = (accumulator: DraftUserId, current: string) => `${accumulator}\n- ${this.userResolver.resolve(current).getDisplayName()}`;
-        const joinedUsernames = `\nJoined:${this.joinedPlayers.reduce(reducer, '')}`;
-        const waitlistedUsernames = includeWaitlist ? `\nWaitlist:${this.waitlistedPlayers.reduce(reducer, '')}` : '';
-        return `${this.buildAttendanceString()}${joinedUsernames}${waitlistedUsernames}`;
+        return new MessageEmbed()
+            .setColor(3447003)
+            .setTitle(name)
+            .setAuthor("Your friendly neighborhood Draft Bot")
+            .setDescription(description)
+            .addFields(fields);
     }
 }

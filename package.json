@@ -4,12 +4,16 @@
   "description": "Organizes draft queues in a Discord server",
   "main": "server.js",
   "scripts": {
-    "build": "",
-    "start": "npm run lint && tsc && node server.js",
-    "test": "npm run lint && npm run testWindows",
-    "testWindows": "SET TS_NODE_PROJECT=test/tsconfig.json&& mocha -P test -r ts-node/register test/**/*.spec.ts",
-    "testUnix": "TS_NODE_PROJECT='test/tsconfig.json' mocha -P test -r ts-node/register test/**/*.spec.ts test/*.spec.ts",
-    "lint": "npx eslint . --ext .ts"
+    "lint": "npx eslint . --ext .ts",
+    "build": "npm run lint && npm run buildNoLint",
+    "buildNoLint": "tsc",
+    "start": "npm run build && node server.js",
+    "startNoLint": "npm run buildNoLint && node server.js",
+    "test": "npm run build && npm run executeTestWindows",
+    "testNoLint": "npm run buildNoLint && npm run executeTestWindows",
+    "executeTestWindows": "SET TS_NODE_PROJECT=test/tsconfig.json&& mocha -P test --colors -r ts-node/register test/**/*.spec.ts",
+    "testUnix": "npm run build && npm run executeTestUnix",
+    "executeTestUnix": "TS_NODE_PROJECT='test/tsconfig.json' mocha -P test --colors -r ts-node/register test/**/*.spec.ts test/*.spec.ts"
   },
   "dependencies": {
     "@types/express": "latest",
@@ -20,7 +24,7 @@
     "typescript": "latest"
   },
   "engines": {
-    "node": "^12"
+    "node": "^12.18.3"
   },
   "repository": {
     "url": "https://glitch.com/#!/project/welcome-project"

@@ -2,12 +2,67 @@
     // Use IntelliSense to learn about possible attributes.
     // Hover to view descriptions of existing attributes.
     // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
-    "version": "0.2.0",
+    "version": "2.0.0",
     "configurations": [
+        {
+            "name": "Run Unit Tests Full (Windows)",
+            "type": "node",
+            "request": "launch",
+            "cwd": "${workspaceFolder}",
+            "runtimeExecutable": "npm",
+            "runtimeArgs": [
+                "run", "test"
+            ],
+            "outputCapture": "std"
+        },
+        {
+            "name": "Run Unit Tests (Windows)",
+            "type": "node",
+            "request": "launch",
+            "cwd": "${workspaceFolder}",
+            "runtimeExecutable": "npm",
+            "runtimeArgs": [
+                "run", "testNoLint"
+            ],
+            "outputCapture": "std"
+        },
+        {
+            "name": "Run Unit Tests (Unix)",
+            "type": "node",
+            "request": "launch",
+            "cwd": "${workspaceFolder}",
+            "runtimeExecutable": "npm",
+            "runtimeArgs": [
+                "run", "testUnix"
+            ],
+            "outputCapture": "std"
+        },
+        {
+            "name": "Start Discord Bot With Linting (Full)",
+            "type": "node",
+            "request": "launch",
+            "cwd": "${workspaceFolder}",
+            "runtimeExecutable": "npm",
+            "runtimeArgs": [
+                "run", "start"
+            ],
+            "outputCapture": "std"
+        },
+        {
+            "name": "Start Discord Bot (Quicker)",
+            "type": "node",
+            "request": "launch",
+            "cwd": "${workspaceFolder}",
+            "runtimeExecutable": "npm",
+            "runtimeArgs": [
+                "run", "startNoLint"
+            ],
+            "outputCapture": "std"
+        },
         {
             "type": "node",
             "request": "launch",
-            "name": "Run Mocha Tests",
+            "name": "[DEPRECATED] Run Mocha Tests",
             "program": "${workspaceFolder}/node_modules/mocha/bin/_mocha",
             "args": [
                 "-bdd",
@@ -23,12 +78,13 @@
             ],
             "env": {
                 "TS_NODE_PROJECT": "${workspaceFolder}/test/tsconfig.json"
-            }
+            },
+            "preLaunchTask": "buildNoLint"
         },
         {
             "type": "node",
             "request": "launch",
-            "name": "Start Discord Bot Normally",
+            "name": "[DEPRECATED] Start Discord Bot Normally",
             "skipFiles": [
                 "<node_internals>/**"
             ],
@@ -38,7 +94,8 @@
             ],
             "env": {
                 "TS_NODE_PROJECT": "${workspaceFolder}/tsconfig.json"
-            }
+            },
+            "preLaunchTask": "buildNoLint"
         }
     ]
 }

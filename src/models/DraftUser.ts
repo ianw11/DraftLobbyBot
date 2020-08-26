@@ -1,6 +1,6 @@
 import { DraftUserId, SessionResolver, DiscordUserResolver } from "../types/DraftServerTypes";
 import Session, {SessionId} from "./Session";
-import { User, DMChannel } from "discord.js";
+import { User, DMChannel, MessageEmbed } from "discord.js";
 import {removeFromArray} from "../Utils";
 
 export default class DraftUser {
@@ -119,16 +119,21 @@ export default class DraftUser {
         }
         const session = this.sessionResolver.resolve(this.createdSessionId);
 
-        let msg = `You have a draft session\n`;
-        msg += `${session.toString(true, true)}\n`;
-
-        await this.sendDM(msg);
+        await this.sendEmbedDM(session.getEmbed(true));
     }
 
     async sendDM(message: string | null): Promise<void> {
         if (!message) {
             return;
         }
+        await (await this.getDmChannel()).send(message);
+    }
+
+    async sendEmbedDM(embed: MessageEmbed): Promise<void> {
+        await (await this.getDmChannel()).send({embed: embed})
+    }
+
+    private async getDmChannel() {
         const user = this.getDiscordUser();
         if (!user) {
             throw new Error("Could not resolve Discord User in order to sendDM");
@@ -136,6 +141,6 @@ export default class DraftUser {
         if (!this.dmChannel) {
             this.dmChannel = await user.createDM();
         }
-        await this.dmChannel.send(message);
+        return this.dmChannel;
     }
 }
