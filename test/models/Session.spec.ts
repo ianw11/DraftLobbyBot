@@ -126,4 +126,25 @@ describe('queue and waitlist checking', () => {
             user.received(1).sessionClosed(session, true);
         });
     });
+
+    it('will let in people from the waitlist when changing capacity', async () => {
+        const {userGenerator, mockSessionParameters} = mocks;
+        const {sessionCapacity} = mockSessionParameters;
+        const newCapacity = sessionCapacity * 2;
+
+        const users: SubstituteOf<DraftUser>[] = [];
+
+        for (let i = 0; i < newCapacity; ++i) {
+            const draftUser = userGenerator();
+            users.push(draftUser);
+            await session.addPlayer(draftUser);
+        }
+
+        expect(session.getNumWaitlisted()).to.equal(newCapacity - sessionCapacity);
+
+        await session.setSessionCapacity(newCapacity);
+
+        expect(session.getNumWaitlisted()).to.equal(0);
+        expect(session.getNumConfirmed()).to.equal(newCapacity);
+    });
 });

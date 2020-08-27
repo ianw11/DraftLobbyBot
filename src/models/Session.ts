@@ -101,7 +101,7 @@ export default class Session {
         }
 
         this.params.sessionCapacity = sessionCapacity;
-        await this.updateMessage();
+        await this.upgradePlayer();
         await this.fireIfAble();
     }
     getSessionCapacity(): number {

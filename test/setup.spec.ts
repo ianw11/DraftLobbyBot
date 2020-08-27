@@ -161,7 +161,7 @@ export default function setup(): MocksInterface {
         mockSessionParameters: {
             name: 'MOCK SESSION',
             description: 'MOCK SESSION DESCRIPTION',
-            fireWhenFull: true,
+            fireWhenFull: false,
             sessionCapacity: 8,
             url: 'MOCK SESSION URL',
             ownerId: DISCORD_USER_ID
