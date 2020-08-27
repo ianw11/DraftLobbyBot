@@ -1,5 +1,6 @@
-import { SessionParameters } from "../types/SessionTypes";
+import { SessionParameters } from "../models/types/SessionTypes";
 import { ActivityType } from "discord.js";
+import { replaceFromDict } from "../Utils";
 
 /////////////////////////////////////////////////
 // INTERFACES GROUPING THE CONFIGURABLE VALUES //
@@ -32,6 +33,7 @@ interface EnvSessionOptions {
     DEFAULT_SESSION_CAPACITY: number;
     DEFAULT_SESSION_DESCRIPTION: string,
     DEFAULT_SESSION_FIRE_WHEN_FULL: boolean;
+    FALLBACK_SESSION_URL: string;
 }
 
 ////////////////////
@@ -52,7 +54,7 @@ const DefaultShallowEnv = {
 
 const DefaultEnvClientOptions: EnvClientOptions = {
     BOT_ACTIVITY: `Magic; %PREFIX%help for help`,
-    BOT_ACTIVITY_TYPE: "WATCHING",
+    BOT_ACTIVITY_TYPE: "PLAYING",
     MESSAGE_CACHE_SIZE: 50
 };
 
@@ -60,7 +62,8 @@ const DefaultEnvSessionOptions: EnvSessionOptions = {
     DEFAULT_SESSION_NAME: "Scheduled Draft",
     DEFAULT_SESSION_CAPACITY: 8,
     DEFAULT_SESSION_DESCRIPTION: "<NO DESCRIPTION PROVIDED>",
-    DEFAULT_SESSION_FIRE_WHEN_FULL: true,
+    DEFAULT_SESSION_FIRE_WHEN_FULL: false,
+    FALLBACK_SESSION_URL: "https://mtgadraft.herokuapp.com/?session=%HRI%" /* Additional parameter: HRI */
 };
 
 /////////////////
@@ -81,27 +84,22 @@ export const buildSessionParameters = (env: ENV): SessionParameters => {
     };
 }
 
+/**
+ * Allows strings defined in 
+ * 
+ * @param str The string with possible ENV values
+ * @param env The current ENV
+ * 
+ * @returns A new string with substituted values
+ */
 export const replaceStringWithEnv = (str: string, env: ENV): string => {
     const entries = Object.entries(env).reduce((accumulator, current) => {
         const [key, value] = current;
-        accumulator[key] = value;
-        return accumulator;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    }, {} as {[key: string]: any});
-
-    let withinParentheses = true;
-    return str.split("%").reduce((accumulator, current: string) => {
-        withinParentheses = !withinParentheses;
-
-        if (withinParentheses) {
-            if (entries[current]) {
-                return accumulator + entries[current];
-            }
-            // We found a normal word, don't perform a replacement and put the parentheses back in
-            withinParentheses = false;
-            return accumulator + `%${current}`;
+        if (typeof value === 'string') {
+            accumulator[key.toUpperCase()] = value;
         }
+        return accumulator;
+    }, {} as Record<string, string>);
 
-        return accumulator + current;
-    }, '');
+    return replaceFromDict(str, "%", entries);
 }

@@ -1,6 +1,6 @@
-import DraftUser from "../models/DraftUser";
+import DraftUser from "../DraftUser";
 import {SessionId} from "./SessionTypes";
-import Session from "../models/Session";
+import Session from "../Session";
 import {User} from 'discord.js';
 
 export type DraftUserId = string;

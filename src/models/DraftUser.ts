@@ -1,4 +1,4 @@
-import { DraftUserId, SessionResolver, DiscordUserResolver } from "../types/DraftServerTypes";
+import { DraftUserId, SessionResolver, DiscordUserResolver } from "./types/DraftServerTypes";
 import Session, {SessionId} from "./Session";
 import { User, DMChannel, MessageEmbed } from "discord.js";
 import {removeFromArray} from "../Utils";

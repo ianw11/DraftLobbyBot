@@ -147,7 +147,7 @@ export default function main(env: ENV): void {
 
     const client = new Client(DISCORD_CLIENT_OPTIONS);
 
-    client.once('ready', async () => {
+    client.once('ready', () => {
         env.log("Logged in successfully");
     });
 

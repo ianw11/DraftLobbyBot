@@ -1,5 +1,5 @@
 import ENV from '../core/EnvBase';
-import {DraftUserId, UserResolver, SessionResolver, DiscordUserResolver} from "../types/DraftServerTypes";
+import {DraftUserId, UserResolver, SessionResolver, DiscordUserResolver} from "./types/DraftServerTypes";
 import Session, {SessionId} from "./Session";
 import DraftUser from "./DraftUser";
 import { User, Message, TextChannel, Guild, GuildChannel, PartialUser } from "discord.js";
@@ -12,46 +12,28 @@ export {
 };
 
 export default class DraftServer {
+    private readonly guild: Guild;
     private readonly env: ENV;
 
-    private sessions: {[messageId: string]: Session | undefined} = {};
-    private users: {[userId: string]: DraftUser} = {};
-    
-    private announcementChannel: TextChannel | null = null;
+    private announcementChannel?: TextChannel;
+
+    private readonly sessions: {[messageId: string]: Session | undefined} = {};
+    private readonly users: {[userId: string]: DraftUser} = {};
 
     readonly userResolver: UserResolver = {resolve: (draftUserId: DraftUserId) => this.getDraftUserById(draftUserId)};
     readonly sessionResolver: SessionResolver = {resolve: (sessionId: SessionId) => this.getSession(sessionId)};
-    readonly discordUserResolver: DiscordUserResolver;
+    readonly discordUserResolver: DiscordUserResolver = {resolve: (userId: string) => this.guild.member(userId)?.user }
 
     constructor (guild: Guild, env: ENV) {
+        this.guild = guild;
         this.env = env;
 
-        this.discordUserResolver = {resolve: (userId: string) => guild.member(userId)?.user };
-        const {channels, name: guildName} = guild;
-
-        let announcementChannel = null;
-        channels.cache.each((channel: GuildChannel) => {
-            const {name: channelName, type} = channel;
-
-            if (type !== 'text') {
-                return;
-            }
-
-            if (channelName === env.DRAFT_CHANNEL_NAME) {
-                announcementChannel = channel as TextChannel;
-            }
-        });
-
-        if (announcementChannel) {
-            env.log(`${guildName} already has a channel`);
-            this.announcementChannel = announcementChannel;
-        } else {
-            env.log(`Creating announcement channel for ${guildName}`);
-            guild.channels.create(env.DRAFT_CHANNEL_NAME).then((channel) => {
-                this.announcementChannel = channel
-            });
-        }
+        this.findOrCreateAnnouncementChannel();
     }
+
+    ////////////////////////////////
+    // SESSION MANAGEMENT METHODS //
+    ////////////////////////////////
 
     async createSession(draftUser: DraftUser, date?: Date): Promise<void> {
         if (!this.announcementChannel) {
@@ -80,14 +62,14 @@ export default class DraftServer {
     }
 
     async startSession(draftUser: DraftUser): Promise<void> {
-        await this.terminate(draftUser, true);
+        await this.terminateSession(draftUser, true);
     }
 
     async closeSession(draftUser: DraftUser): Promise<void> {
-        await this.terminate(draftUser);
+        await this.terminateSession(draftUser);
     }
 
-    private async terminate(draftUser: DraftUser, started = false) {
+    private async terminateSession(draftUser: DraftUser, started = false) {
         if (!draftUser.getCreatedSessionId()) {
             throw new Error("You don't have any session to terminate");
         }
@@ -101,6 +83,10 @@ export default class DraftServer {
         
         draftUser.setCreatedSessionId(null);
     }
+
+    ////////////////////////
+    // PUBLIC GET METHODS //
+    ////////////////////////
 
     getSessionFromMessage(message: Message): Session | undefined {
         return this.getSession(message.id);
@@ -137,5 +123,35 @@ export default class DraftServer {
             return user;
         }
         throw new Error("Could not find DraftUser for the provided DraftUserId");
+    }
+
+    //////////////////////
+    // INTERNAL METHODS //
+    //////////////////////
+
+    private findOrCreateAnnouncementChannel() {
+        const {channels, name: guildName} = this.guild;
+        const {DRAFT_CHANNEL_NAME, log} = this.env;
+
+        channels.cache.each((channel: GuildChannel) => {
+            const {name: channelName, type} = channel;
+
+            if (type !== 'text') {
+                return;
+            }
+
+            if (channelName === DRAFT_CHANNEL_NAME) {
+                this.announcementChannel = channel as TextChannel;
+            }
+        });
+
+        if (this.announcementChannel) {
+            log(`${guildName} already has a channel`);
+        } else {
+            log(`Creating announcement channel for ${guildName}`);
+            this.guild.channels.create(DRAFT_CHANNEL_NAME).then((channel) => {
+                this.announcementChannel = channel
+            });
+        }
     }
 }

@@ -38,3 +38,31 @@ export function parseDate(parameters: string[]): Date | undefined {
 
     return date;
 }
+
+export function replaceFromDict(inputStr: string, delimiter: string, dict: Record<string, string>): string {
+    let withinDelimiter = true;
+    const reducer = (accumulator: string, current: string): string => {
+        withinDelimiter = !withinDelimiter;
+
+        if (withinDelimiter) {
+            if (dict[current]) {
+                return `${accumulator}${dict[current]}`;
+            }
+            // We found a normal word, don't perform a replacement and put the delimiter back in
+            withinDelimiter = false;
+            return `${accumulator}%${current}`;
+        }
+
+        return `${accumulator}${current}`;
+    };
+
+    return inputStr.split(delimiter).reduce(reducer, '');
+}
+
+export function curryReplaceFromDict(delimiter: string) {
+    return (inputStr: string, dict: Record<string, string>): string => replaceFromDict(inputStr, delimiter, dict);
+}
+
+export async function asyncForEach<T>(arr: T[], callback: (elem: T, index?: number, array?: T[])=> void | Promise<void>): Promise<void> {
+    await Promise.all(arr.map(callback));
+}

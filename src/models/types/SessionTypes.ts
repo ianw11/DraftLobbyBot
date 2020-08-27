@@ -9,4 +9,4 @@ export interface SessionParameters {
     url?: string; // The lack of this field indicates we default to the heroku app url
 }
 
-export type SessionConstructorParameter = SessionParameters & {ownerId?: string};
+export type SessionConstructorParameter = Partial<SessionParameters> & {ownerId?: string};

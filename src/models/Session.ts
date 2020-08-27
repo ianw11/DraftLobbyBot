@@ -1,9 +1,9 @@
-import {SessionParameters, SessionId, SessionConstructorParameter} from '../types/SessionTypes';
+import {SessionParameters, SessionId, SessionConstructorParameter} from './types/SessionTypes';
 import ENV, {buildSessionParameters} from '../core/EnvBase';
 import { Message, MessageEmbed, EmbedFieldData } from "discord.js";
 import DraftUser from "./DraftUser";
-import { removeFromArray } from "../Utils";
-import { UserResolver, DraftUserId } from "../types/DraftServerTypes";
+import { removeFromArray, replaceFromDict, asyncForEach } from "../Utils";
+import { UserResolver, DraftUserId } from "./types/DraftServerTypes";
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const hri = require("human-readable-ids").hri; // JS Library
@@ -30,7 +30,7 @@ export default class Session {
     private readonly params: SessionParameters;
     private sessionClosed = false;
 
-    constructor (message: Message, userResolver: UserResolver, env: ENV, params?: Partial<SessionConstructorParameter>) {
+    constructor (message: Message, userResolver: UserResolver, env: ENV, params?: SessionConstructorParameter) {
         this.message = message;
         this.sessionId = message.id;
         this.env = env;
@@ -51,6 +51,10 @@ export default class Session {
             ...(params || {})
         };
     }
+
+    /////////////////////////
+    // GETTERS AND SETTERS //
+    /////////////////////////
 
     // These two methods would be good candidates as getter methods
     // but the Substitute mocking testing framework doesn't allow
@@ -76,11 +80,14 @@ export default class Session {
     }
 
     setUrl(url?: string): void {
+        if (url) {
+            url = replaceFromDict(url, '%', {HRI: hri.random()});
+        }
         this.params.url = url;
     }
     getUrl(): string {
         if (!this.params.url) {
-            this.params.url = `https://mtgadraft.herokuapp.com/?session=${hri.random()}`;
+            this.params.url = replaceFromDict(this.env.FALLBACK_SESSION_URL, '%', {HRI: hri.random()});
         }
         return this.params.url;
     }
@@ -125,6 +132,10 @@ export default class Session {
         return this.params.fireWhenFull;
     }
 
+
+    ///////////////////////////////////
+    // USER AND LIFECYCLE MANAGEMENT //
+    ///////////////////////////////////
 
     canAddPlayers() : boolean {
         return !this.sessionClosed && this.getNumConfirmed() < this.params.sessionCapacity;
@@ -199,9 +210,9 @@ export default class Session {
         this.sessionClosed = true;
 
         // Notify both joined and waitlisted that this Session is closed
-        const callback = (draftUserId: DraftUserId) => this.userResolver.resolve(draftUserId).sessionClosed(this, started);
-        this.joinedPlayers.forEach(callback);
-        this.waitlistedPlayers.forEach(callback);
+        const callback = async (draftUserId: DraftUserId) => await this.userResolver.resolve(draftUserId).sessionClosed(this, started);
+        await asyncForEach(this.joinedPlayers, callback);
+        await asyncForEach(this.waitlistedPlayers, callback);
 
         // Clean up the announcement channel a bit
         await this.message.delete();
@@ -209,6 +220,24 @@ export default class Session {
 
     private async updateMessage() {
         await this.message.edit(this.getEmbed());
+    }
+
+    /////////////////////////
+    // CONVENIENCE METHODS //
+    /////////////////////////
+
+    async broadcast(message: string, includeWaitlist = false): Promise<void> {
+        const callback = async (userId: DraftUserId) => {
+            if (userId === this.ownerId) {
+                return;
+            }
+            await this.userResolver.resolve(userId).sendDM(message);
+        };
+
+        await asyncForEach(this.joinedPlayers, callback);
+        if (includeWaitlist) {
+            await asyncForEach(this.waitlistedPlayers, callback);
+        }
     }
 
     getEmbed(provideOwnerInformation?: boolean): MessageEmbed {

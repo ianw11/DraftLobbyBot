@@ -1,4 +1,4 @@
-import { expect } from '../chaiAsync';
+import { expect } from '../chaiAsync.spec';
 import { replaceStringWithEnv } from '../../src/core/EnvBase';
 import { mockEnv } from '../setup.spec';
 
