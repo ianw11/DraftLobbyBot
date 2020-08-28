@@ -96,7 +96,7 @@ export default class DraftUser {
             return (sessionId: SessionId) => {
                 const session = this.sessionResolver.resolve(sessionId);
 
-                msg += `- ${session.toString()}`;
+                msg += `- ${session.toSimpleString()}`;
                 if (includePlace) {
                     const position = session.getWaitlistIndexOf(this.getUserId()) + 1;
                     msg += ` || You are in position ${position} of ${session.getNumWaitlisted()}`;
@@ -106,8 +106,10 @@ export default class DraftUser {
         };
 
         this.joinedSessions.forEach(callback(false));
-        msg += "**Sessions you are waitlisted for:**\n";
-        this.waitlistedSessions.forEach(callback(true));
+        if (this.waitlistedSessions.length > 0) {
+            msg += "**Sessions you are waitlisted for:**\n";
+            this.waitlistedSessions.forEach(callback(true));
+        }
 
         await this.sendDM(msg);
     }

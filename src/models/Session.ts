@@ -219,7 +219,7 @@ export default class Session {
     }
 
     private async updateMessage() {
-        await this.message.edit(this.getEmbed());
+        await this.message.edit('', this.getEmbed());
     }
 
     /////////////////////////
@@ -227,17 +227,27 @@ export default class Session {
     /////////////////////////
 
     async broadcast(message: string, includeWaitlist = false): Promise<void> {
+        let intro = `EVENT ${this.params.name}`;
+        if (this.ownerId) {
+            const owner = this.userResolver.resolve(this.ownerId);
+            intro = `${owner.getDisplayName()} (${this.params.name})`
+        }
         const callback = async (userId: DraftUserId) => {
             if (userId === this.ownerId) {
                 return;
             }
-            await this.userResolver.resolve(userId).sendDM(message);
+            await this.userResolver.resolve(userId).sendDM(`\`[BROADCAST] ${intro}\`\n${message}`);
         };
 
         await asyncForEach(this.joinedPlayers, callback);
         if (includeWaitlist) {
             await asyncForEach(this.waitlistedPlayers, callback);
         }
+    }
+
+    toSimpleString(): string {
+        const {name, date, description} = this.params;
+        return `**${name}** ${date ? `- starts at ${date.toString()} ` : ''} || ${description}`;
     }
 
     getEmbed(provideOwnerInformation?: boolean): MessageEmbed {

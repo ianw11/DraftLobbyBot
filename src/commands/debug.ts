@@ -5,7 +5,16 @@ export default class DebugCommand implements Command {
     exclude = true;
 
     async execute(context: Context): Promise<void> {
-        console.log(context.parameters);
+        const sessionId = context.draftUser.getCreatedSessionId();
+        if (!sessionId) {
+            return;
+        }
+        const session = context.sessionResolver.resolve(sessionId);
+        if (!session) {
+            return;
+        }
+
+        session.broadcast(context.parameters.join(' '));
     }
 }
 

@@ -67,7 +67,7 @@ describe("Basic Session Checks", () => {
         expect(session.getDate()).to.deep.equal(date);
 
         // Setting url does not update the message
-        mockMessage.received(5).edit(Arg.any());
+        mockMessage.received(5).edit(Arg.is((arg) => typeof arg === 'string'), Arg.any());
     });
 
     it('cannot set invalid parameters', () => {
