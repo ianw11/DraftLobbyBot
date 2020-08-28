@@ -6,8 +6,8 @@ Do you have a discord server that likes to schedule events/games? Do you find or
 ## Table of Contents
 * [Overview](#overview)
 * [The bot is on my server and <b>I JUST WANT TO KNOW HOW TO JOIN EVENTS</b>](#user-guide)
-* [The bot is on my server and I want to create/host an event](#session-owner)
-* [I want the bot on my server](*installation)
+* [The bot is on my server and I want to create/host an event](#session-creator)
+* [I want the bot on my server](#installation)
 
 ## Overview
 
