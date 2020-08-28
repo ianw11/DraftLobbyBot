@@ -42,7 +42,7 @@ export default class HelpCommand implements Command {
         });
 
         return new MessageEmbed()
-            .setTitle('COMMAND REFERENCE')
+            .setTitle('COMMAND REFERENCE - For more help, see: https://github.com/ianw11/DraftLobbyBot#looking-for-game---the-discord-bot')
             .addFields(fields);
     }
 
