@@ -8,6 +8,7 @@ Do you have a discord server that likes to schedule events/games? Do you find or
 * [The bot is on my server and <b>I JUST WANT TO KNOW HOW TO JOIN EVENTS</b>](#user-guide)
 * [The bot is on my server and I want to create/host an event](#session-creator)
 * [I want the bot on my server](#installation)
+* [Credits and Support This Project](#credits)
 
 ## Overview
 
@@ -80,3 +81,18 @@ When everything looks ready to go, use `!start`
 ## Installation
 
 Head over to the [installation guide](docs/setup.md) (still a work in progress)
+
+
+## Credits
+
+This bot was written as a hobby/side project, mainly to learn typescript.  The intention is to allow this bot to be used on other servers, whether it's for the original goal of Magic: the Gathering drafting or for any generic session setup.
+
+The software is free to clone/fork.  However, if you like what you see and want to support more of it, a donation would be most appreciated!
+
+* This account (ianw11) is a BAT approved publisher.  If you use Brave browser (or BAT tokens in general) feel free to leave a tip
+* Ethereum/ERC tokens: 0xe2f8fC7bc4D582a8bD963509bB333C4495221636
+* [Paypal](https://paypal.me/IanWashburne)
+* [Venmo](https://venmo.com/code?user_id=1230166806233088269)
+
+
+Licensed under the MIT license.
