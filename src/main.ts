@@ -96,11 +96,13 @@ function onMessage(client: Client, env: ENV) {
 
                 // Finally execute
                 await command.execute(new Context(props));
+                await message.react('✔️');
             } else {
                 log(`Invalid command: ${commandStr}`);
             }
         } catch (e) {
             await outputError(e, author, env);
+            await message.react('❌');
         }
     }
 }
