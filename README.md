@@ -15,9 +15,9 @@ This bot facilitates creating lobbies that other Discord users in your server ca
 
 
 ## User Guide
-(You can get a quick reference if you send `!help` in your server)
+> ### <b>To join an event, tap the emoji.  That's it.</b>
 
-### <b>To join an event, tap the emoji.  That's it.</b>
+(You can get a quick reference if you send `!help` in your server)
 
 The bot will DM you and let you know if you are confirmed or waitlisted.  When the event starts, you will receive another DM.  If you are waitlisted and enough people leave that you get added, you will receive another DM.  If the event gets cancelled, you guessed it, you'll receive another DM.
 
