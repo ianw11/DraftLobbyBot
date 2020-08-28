@@ -89,6 +89,12 @@ export default class DraftServer {
     ////////////////////////
 
     getSessionFromMessage(message: Message): Session | undefined {
+        if (!this.announcementChannel) {
+            throw new Error("Bot was not properly set up with an announcement channel - probably requires a restart");
+        }
+        if (message.channel.id !== this.announcementChannel.id) {
+            return undefined;
+        }
         return this.getSession(message.id);
     }
 
