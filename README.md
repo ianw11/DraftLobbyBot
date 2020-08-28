@@ -87,7 +87,7 @@ Head over to the [installation guide](docs/setup.md) (still a work in progress)
 
 This bot was written as a hobby/side project, mainly to learn typescript.  The intention is to allow this bot to be used on other servers, whether it's for the original goal of Magic: the Gathering drafting or for any generic session setup.
 
-The software is free to clone/fork.  However, if you like what you see and want to support more of it, a donation would be most appreciated!
+The software is free to clone/fork.  However, if you like what you see and want to support more of it (or just buy me a beer), a donation would be most appreciated!
 
 * This account (ianw11) is a BAT approved publisher.  If you use Brave browser (or BAT tokens in general) feel free to leave a tip
 * Ethereum/ERC tokens: 0xe2f8fC7bc4D582a8bD963509bB333C4495221636
