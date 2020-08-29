@@ -1,6 +1,6 @@
 import ENV from '../core/EnvBase';
 import {DraftUserId, UserResolver, SessionResolver, DiscordUserResolver} from "./types/DraftServerTypes";
-import Session, {SessionId} from "./Session";
+import Session, {SessionId, SessionParameters} from "./Session";
 import DraftUser from "./DraftUser";
 import { User, Message, TextChannel, Guild, GuildChannel, PartialUser } from "discord.js";
 
@@ -17,8 +17,8 @@ export default class DraftServer {
 
     private announcementChannel?: TextChannel;
 
-    private readonly sessions: {[messageId: string]: Session | undefined} = {};
-    private readonly users: {[userId: string]: DraftUser} = {};
+    private readonly sessions: Record<SessionId, Session|undefined> = {};
+    private readonly users: Record<DraftUserId, DraftUser> = {};
 
     readonly userResolver: UserResolver = {resolve: (draftUserId: DraftUserId) => this.getDraftUserById(draftUserId)};
     readonly sessionResolver: SessionResolver = {resolve: (sessionId: SessionId) => this.getSession(sessionId)};
@@ -35,7 +35,7 @@ export default class DraftServer {
     // SESSION MANAGEMENT METHODS //
     ////////////////////////////////
 
-    async createSession(draftUser: DraftUser, date?: Date): Promise<void> {
+    async createSession(draftUser: DraftUser, parameters?: Partial<SessionParameters>): Promise<void> {
         if (!this.announcementChannel) {
             return;
         }
@@ -48,7 +48,7 @@ export default class DraftServer {
         const message = await this.announcementChannel.send("Creating session...");
 
         // Then build the actual Session object
-        const session = new Session(message, this.userResolver, this.env, {date: date, ownerId: draftUser.getUserId()});
+        const session = new Session(message, this.userResolver, this.env, {...(parameters||{}), ownerId: draftUser.getUserId()});
         
         // Persist the Session object
         this.sessions[session.sessionId] = session;
@@ -88,12 +88,16 @@ export default class DraftServer {
     // PUBLIC GET METHODS //
     ////////////////////////
 
+    get serverId(): string {
+        return this.guild.id;
+    }
+
     getSessionFromMessage(message: Message): Session | undefined {
         if (!this.announcementChannel) {
             throw new Error("Bot was not properly set up with an announcement channel - probably requires a restart");
         }
         if (message.channel.id !== this.announcementChannel.id) {
-            return undefined;
+            return;
         }
         return this.getSession(message.id);
     }

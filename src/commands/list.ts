@@ -1,5 +1,5 @@
-import Command from './types/Command';
-import Context from './types/Context';
+import Command from './models/Command';
+import Context from './models/Context';
 
 export default class ListCommand implements Command {
     async execute(context: Context): Promise<void> {

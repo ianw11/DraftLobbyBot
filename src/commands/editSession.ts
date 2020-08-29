@@ -1,5 +1,5 @@
-import Command from "./types/Command";
-import Context from "./types/Context";
+import Command from "./models/Command";
+import Context from "./models/Context";
 import { parseDate } from "../Utils";
 
 export default class EditSessionCommand implements Command {

@@ -1,8 +1,15 @@
-import ENV, {DEFAULTS} from './src/core/EnvBase';
-const ENV_JSON_FILE_LOCATION = './env.json'; // Edit this if needed
+import ENV, {DEFAULTS} from './EnvBase';
+const ENV_JSON_FILE_LOCATION = '../../config/env.json'; // Edit this if needed
 
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const ENV_JSON = require(ENV_JSON_FILE_LOCATION);
+let ENV_JSON = { DISCORD_BOT_TOKEN: "NO_BOT_TOKEN_PROVIDED" };
+try {
+    ENV_JSON = require(ENV_JSON_FILE_LOCATION);
+    if (!ENV_JSON.DISCORD_BOT_TOKEN) {
+        throw new Error("config/env.json MUST define DISCORD_BOT_TOKEN - ensure the field is defined");
+    }
+} catch (e) {
+    throw new Error("Could not find config/env.json - make sure this file exists");
+}
 
 
 const OVERRIDES = {

@@ -4,7 +4,7 @@ import Commands from './commands';
 import DraftServer from './models/DraftServer';
 import Session from './models/Session';
 import DraftUser from './models/DraftUser';
-import Context, { ContextProps } from './commands/types/Context';
+import Context, { ContextProps } from './commands/models/Context';
 
 //
 // To set your Discord Bot Token, take a look at ../env.ts for an explanation (hint: make an env.json)

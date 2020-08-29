@@ -1,4 +1,4 @@
 import main from './src/main';
-import env from './env';
+import env from './src/core/env';
 
 main(env);

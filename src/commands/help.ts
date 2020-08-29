@@ -1,6 +1,6 @@
 import Commands from '.'; // Load all other commands
-import Command from "./types/Command";
-import Context from "./types/Context";
+import Command from "./models/Command";
+import Context from "./models/Context";
 import { MessageEmbed, EmbedFieldData } from 'discord.js';
 
 export default class HelpCommand implements Command {

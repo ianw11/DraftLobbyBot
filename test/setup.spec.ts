@@ -4,7 +4,7 @@ import DraftServer, {DraftUserId, UserResolver, SessionResolver, DiscordUserReso
 import { DMChannel, User, Message, Client } from "discord.js";
 import DraftUser from "../src/models/DraftUser";
 import ENV, {DEFAULTS} from "../src/core/EnvBase";
-import Context from "../src/commands/types/Context";
+import Context from "../src/commands/models/Context";
 
 /*
 WARNING: THAR BE DRAGONS IN THIS FILE
@@ -64,7 +64,7 @@ export const mockEnv: ENV = {...DEFAULTS, ...{
 // TEST LIFECYCLE //
 ////////////////////
 
-// These are safe to reset every single test
+// These should be reset every single test
 let builtMocks: MocksInterface;
 let generatedUsers = {};
 let generatedDiscordUsers = {};

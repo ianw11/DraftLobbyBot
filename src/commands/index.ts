@@ -1,4 +1,4 @@
-import Command from './types/Command';
+import Command from './models/Command';
 import ListCommand from './list';
 import CreateCommand from './create';
 import InfoCommand from './info';
