@@ -3,6 +3,8 @@ import Context from "./models/Context";
 import { parseDate } from "../Utils";
 
 export default class EditSessionCommand implements Command {
+    static readonly singleton = new EditSessionCommand();
+
     async execute(context: Context): Promise<void> {
         const sessionId = context.draftUser.getCreatedSessionId();
         if (!sessionId) {

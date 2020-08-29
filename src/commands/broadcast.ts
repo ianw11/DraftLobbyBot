@@ -2,6 +2,8 @@ import Command from "./models/Command";
 import Context from "./models/Context";
 
 export default class BroadcastCommand implements Command {
+    static readonly singleton = new BroadcastCommand();
+
     async execute(context: Context): Promise<void> {
         const session = context.draftServer.getSessionFromDraftUser(context.draftUser);
         if (!session) {

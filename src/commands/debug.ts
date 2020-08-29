@@ -2,6 +2,8 @@ import Command from "./models/Command";
 import Context from "./models/Context";
 
 export default class DebugCommand implements Command {
+    static readonly singleton = new DebugCommand();
+
     exclude = true;
 
     async execute(context: Context): Promise<void> {

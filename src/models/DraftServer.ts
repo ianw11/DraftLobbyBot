@@ -37,7 +37,7 @@ export default class DraftServer {
 
     async createSession(draftUser: DraftUser, parameters?: Partial<SessionParameters>): Promise<void> {
         if (!this.announcementChannel) {
-            return;
+            throw new Error("Cannot create a session - announcement channel was not set up.  Bot might require a restart");
         }
         // Close out any prior Sessions
         if (draftUser.getCreatedSessionId()) {
@@ -105,7 +105,7 @@ export default class DraftServer {
     getSessionFromDraftUser(draftUser: DraftUser): Session | undefined {
         const sessionId = draftUser.getCreatedSessionId();
         if (!sessionId) {
-            return undefined;
+            return;
         }
         return this.getSession(sessionId);
     }

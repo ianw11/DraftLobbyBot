@@ -2,6 +2,8 @@ import Command from './models/Command';
 import Context from './models/Context';
 
 export default class ListCommand implements Command {
+    static readonly singleton = new ListCommand();
+    
     async execute(context: Context): Promise<void> {
         await context.draftUser.listSessions();
     }

@@ -5,6 +5,8 @@ import { SessionParameters } from '../models/Session';
 
 
 export default class CreateCommand implements Command {
+    static readonly singleton = new CreateCommand();
+
     async execute(context: Context): Promise<void> {
         await context.draftServer.createSession(context.draftUser, this.findTemplate(context));
     }
@@ -28,6 +30,6 @@ export default class CreateCommand implements Command {
     }
 
     usage(invocation: string): string {
-        return `${invocation} create  - OR -  ${invocation} create <templateName>`;
+        return `${invocation}  - OR -  ${invocation} <templateName>`;
     }
 }

@@ -23,7 +23,7 @@ try {
  * It also has the benefit of funneling all requests through it.
  */
 export default class SessionTemplateCache {
-    static singleton = new SessionTemplateCache();
+    static readonly singleton = new SessionTemplateCache();
 
     private constructor() { // No-op
     }
@@ -42,5 +42,26 @@ export default class SessionTemplateCache {
         }
 
         return CommonTemplate[templateName];
+    }
+
+    getTemplatesForServer(serverId: string, includeCommon = true): Record<string, OptionalSessionParameter> {
+        const output: Record<string, OptionalSessionParameter> = {};
+
+        // Load the common templates first
+        if (includeCommon && CommonTemplate) {
+            Object.keys(CommonTemplate).forEach((commonKey) => {
+                output[commonKey] = CommonTemplate[commonKey];
+            });
+        }
+
+        // Override the common templates with server-specific templates
+        const serverTemplates = Templates[serverId];
+        if (serverTemplates) {
+            Object.keys(serverTemplates).forEach((templateName) => {
+                output[templateName] = serverTemplates[templateName];
+            });
+        }
+
+        return output;
     }
 }

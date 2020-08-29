@@ -4,6 +4,8 @@ import Context from "./models/Context";
 import { MessageEmbed, EmbedFieldData } from 'discord.js';
 
 export default class HelpCommand implements Command {
+    static readonly singleton = new HelpCommand();
+
     private embed: MessageEmbed | null = null;
     private followup = '';
 
@@ -26,6 +28,7 @@ export default class HelpCommand implements Command {
     }
 
     private buildEmbed(context: Context): MessageEmbed {
+        const alreadyUsedCommands: string[] = [];
         const fields: EmbedFieldData[] = [];
         Object.keys(Commands).sort().forEach((key) => {
             const command = Commands[key];
@@ -33,9 +36,29 @@ export default class HelpCommand implements Command {
             if (command.exclude) {
                 return;
             }
+
             const invocation = `${context.env.PREFIX}${key}`;
 
-            const field = this.buildField(key, command, invocation);
+            const duplicateKey = alreadyUsedCommands.reduce((output, previousKey) => {
+                if (output) {
+                    return output;
+                }
+                if (command === Commands[previousKey]) {
+                    return previousKey;
+                }
+                return output;
+            }, '');
+
+            if (duplicateKey) {
+                fields.push({
+                    name: invocation,
+                    value: `DUPLICATE - see **${context.env.PREFIX}${duplicateKey}**`
+                })
+                return;
+            }
+            alreadyUsedCommands.push(key);
+
+            const field = this.buildField(invocation, command);
             if (field) {
                 fields.push(field);
             }
@@ -46,11 +69,11 @@ export default class HelpCommand implements Command {
             .addFields(fields);
     }
 
-    private buildField(name: string, command: Command, invocation: string): EmbedFieldData | null {
+    private buildField(invocation: string, command: Command): EmbedFieldData | null {
         const value = `${command.help ? `[DESCRIPTION] ${command.help()}\n` : ''}${command.usage ? `[USAGE] \`${command.usage(invocation)}\`\n` : ''}${command.usageExample ? `[USAGE EXAMPLE] \`${command.usageExample(invocation)}\`` : ''}`;
 
         return {
-            name: name,
+            name: invocation,
             value: value === '' ? "<No Help Provided>" : value
         }
     }
