@@ -1,4 +1,4 @@
-import {SessionParameters, SessionId, SessionConstructorParameter} from './types/SessionTypes';
+import {SessionParameters, SessionId, SessionConstructorParameter, TemplateSessionParameters} from './types/SessionTypes';
 import ENV, {buildSessionParameters} from '../core/EnvBase';
 import { Message, MessageEmbed, EmbedFieldData } from "discord.js";
 import DraftUser from "./DraftUser";
@@ -10,6 +10,7 @@ const hri = require("human-readable-ids").hri; // JS Library
 
 export {
     SessionId,
+    TemplateSessionParameters,
     SessionParameters,
     SessionConstructorParameter
 };

@@ -1,6 +1,6 @@
-import { SessionParameters } from "./Session";
+import { TemplateSessionParameters } from "./Session";
 
-type OptionalSessionParameter = Partial<SessionParameters> | undefined;
+type OptionalSessionParameter = Partial<TemplateSessionParameters> | undefined;
 type SessionParameterMap = Record<string, OptionalSessionParameter>;
 type SessionParameterFile = Record<string, SessionParameterMap>;
 
@@ -28,7 +28,7 @@ export default class SessionTemplateCache {
     private constructor() { // No-op
     }
 
-    getTemplate(serverId: string, templateName: string): Partial<SessionParameters> | undefined {
+    getTemplate(serverId: string, templateName: string): Partial<TemplateSessionParameters> | undefined {
         // Perform a check to see if we have an object for the provided serverId
         // Then if we do, check if it has the desired template.
         // If either doesn't exist, return whatever is in the CommonTemplate.
