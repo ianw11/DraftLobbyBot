@@ -1,0 +1,12 @@
+{
+    "YOUR_SERVER_ID": {
+    },
+    "_common": {
+        "common": {
+            "sessionCapacity": 8,
+            "name": "Pickup Draft",
+            "description": "Join if interested!",
+            "fireWhenFull": false
+        }
+    }
+}
