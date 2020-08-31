@@ -1,5 +1,5 @@
 const fs = require('fs');
-import {CronJob} from 'cron';
+import {CronJob, job} from 'cron';
 import env from './env';
 import {Client, Message, MessageReaction, User, Guild} from 'discord.js';
 import Commands from './commands';
@@ -44,6 +44,7 @@ async function onCommand(message: Message) {
     // Perform initial filtering checks
     if (author.bot) return;
     if (env.DEBUG && content === 'dc') {
+        
         client.destroy(); // Ends the Node process too
         return;
     }
@@ -100,6 +101,7 @@ const client = new Client();
 
 client.once('ready', async () => {
     env.log("Logged in successfully");
+    env.log(String(client.user.bot));
 
     // Setup the DraftServers
     client.guilds.cache.each(async (guild: Guild) => {
@@ -107,7 +109,7 @@ client.once('ready', async () => {
         SERVERS[guild.id] = guildServer;
         let cron_entry_for_guild: CronEntry = cronjobs[guild.id];
         if (cron_entry_for_guild != null) {
-            let job: CronJob = new CronJob(cron_entry_for_guild.cronTask, function() {
+            let scheduler: CronJob = job(cron_entry_for_guild.cronTask, function() {
                 let me: DraftUser = guildServer.getDraftUser(client.user);
                 let scheduledWhen: when = {
                     asap: false,
@@ -116,7 +118,8 @@ client.once('ready', async () => {
                 }
                 guildServer.createSession(me,scheduledWhen);
               }, null, true, 'America/Chicago');
-            job.start();
+            guildServer.addScheduler(scheduler);
+            scheduler.start();
         } 
     });
 });

@@ -2,6 +2,7 @@ import Session, {SessionId, when} from "./Session";
 import DraftUser from "./DraftUser";
 import { User, Message, TextChannel, Client, Guild, GuildChannel } from "discord.js";
 import { ENV } from "../env";
+import { CronJob } from "cron";
 
 export type DraftUserId = string;
 
@@ -23,6 +24,8 @@ export default class DraftServer {
     readonly sessionResolver: SessionResolver = (sessionId: SessionId) => this.getSession(sessionId);
 
     private readonly EMOJI: string;
+
+    private schedulers: CronJob[];
 
     constructor (guild: Guild, env: ENV) {
         this.EMOJI = env.EMOJI;
@@ -51,6 +54,8 @@ export default class DraftServer {
                 this.announcementChannel = channel
             });
         }
+
+        this.schedulers = [];
     }
 
     async createSession(draftUser: DraftUser, when?: when) {
@@ -130,5 +135,9 @@ export default class DraftServer {
 
     getDraftUserById(draftUserId: DraftUserId): DraftUser | null {
         return this.users[draftUserId];
+    }
+
+    addScheduler(scheduler: CronJob) {
+        this.schedulers.push(scheduler);
     }
 }
