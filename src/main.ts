@@ -56,6 +56,7 @@ function onMessage(client: Client, env: ENV) {
         if (author.bot) return;
         if (DEBUG && content === 'dc') {
             log("Bye bye");
+            Object.values(SERVERS).forEach(server => server.stopSchedulers());
             client.destroy(); // Ends the Node process too
             return;
         }

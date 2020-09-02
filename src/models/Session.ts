@@ -219,7 +219,7 @@ export default class Session {
         await this.message.delete();
     }
 
-    private async updateMessage() {
+    async updateMessage() {
         await this.message.edit('', this.getEmbed());
     }
 

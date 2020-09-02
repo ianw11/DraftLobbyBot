@@ -19,6 +19,7 @@
     "@types/cron": "^1.7.2",
     "@types/express": "latest",
     "@types/node": "latest",
+    "@types/ws": "^7.2.6",
     "cron": "^1.8.2",
     "discord.js": "^12.3.1",
     "human-readable-ids": "^1.0.4",
