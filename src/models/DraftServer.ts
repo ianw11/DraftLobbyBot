@@ -4,12 +4,13 @@ import Session, {SessionId, SessionParameters} from "./Session";
 import DraftUser from "./DraftUser";
 import { User, Message, TextChannel, Guild, GuildChannel, PartialUser, ClientUser } from "discord.js";
 import {CronJob, job} from 'cron';
-import fs = require('fs');
 
 class CronEntry {
     cronTask = "";
     sessionTime = "";
 }
+
+type CronJobFile = Record<string, CronEntry>;
 
 export {
     DraftUserId,
@@ -39,9 +40,14 @@ export default class DraftServer {
 
         this.schedulers = [];
 
-        const rawdata = fs.readFileSync('config/cronjobs.json').toString();
-        const cronjobs = JSON.parse(rawdata);
-        const cron_entry_for_guild: CronEntry = cronjobs[guild.id];
+        let ServerCronJobs: CronJobFile = {};
+        try {
+            // eslint-disable-next-line @typescript-eslint/no-var-requires
+            ServerCronJobs = require('../../config/cronjobs.json') as CronJobFile;
+        } catch (e) {
+            console.log("Could not find config/cronjobs.json - starting server without scheduling");
+        }
+        const cron_entry_for_guild: CronEntry = ServerCronJobs[guild.id];
         if (cron_entry_for_guild != null) {
             const scheduler: CronJob = job(
                 cron_entry_for_guild.cronTask, 
