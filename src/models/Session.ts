@@ -1,6 +1,6 @@
 import {SessionParameters, SessionId, SessionConstructorParameter, TemplateSessionParameters} from './types/SessionTypes';
 import ENV, {buildSessionParameters} from '../core/EnvBase';
-import { Message, MessageEmbed, EmbedFieldData } from "discord.js";
+import { Message, MessageEmbed, EmbedFieldData, TextChannel } from "discord.js";
 import DraftUser from "./DraftUser";
 import { removeFromArray, replaceFromDict, asyncForEach } from "../Utils";
 import { UserResolver, DraftUserId } from "./types/DraftServerTypes";
@@ -19,8 +19,8 @@ export default class Session {
     // Maintained only so the owner can't leave the draft instead of deleting it
     private readonly ownerId?: DraftUserId;
 
-    private readonly message: Message;
-    readonly sessionId: SessionId;
+    private message?: Message;
+    private _sessionId?: SessionId;
     private readonly env: ENV;
 
     private readonly userResolver: UserResolver;
@@ -31,9 +31,7 @@ export default class Session {
     private readonly params: SessionParameters;
     private sessionClosed = false;
 
-    constructor (message: Message, userResolver: UserResolver, env: ENV, params?: SessionConstructorParameter) {
-        this.message = message;
-        this.sessionId = message.id;
+    constructor (userResolver: UserResolver, env: ENV, params?: SessionConstructorParameter) {
         this.env = env;
 
         this.userResolver = userResolver;
@@ -56,6 +54,25 @@ export default class Session {
     /////////////////////////
     // GETTERS AND SETTERS //
     /////////////////////////
+
+    async resetMessage(channel: TextChannel): Promise<[SessionId, Message]> {
+        const message = await channel.send(this.getEmbed());
+
+        this.message =  message;
+        this._sessionId = message.id;
+
+        return [this._sessionId, this.message];
+    }
+
+    get sessionId(): SessionId {
+        if (!this._sessionId) {
+            throw new Error("Session requires Message reset");
+        }
+        return this._sessionId;
+    }
+    set sessionId(sessionId: SessionId) {
+        throw new Error("Session Id can only be set via resetMessage()");
+    }
 
     // These two methods would be good candidates as getter methods
     // but the Substitute mocking testing framework doesn't allow
@@ -216,11 +233,15 @@ export default class Session {
         await asyncForEach(this.waitlistedPlayers, callback);
 
         // Clean up the announcement channel a bit
-        await this.message.delete();
+        if (this.message) {
+            await this.message.delete();
+        }
     }
 
     private async updateMessage() {
-        await this.message.edit('', this.getEmbed());
+        if (this.message) {
+            await this.message.edit('', this.getEmbed());
+        }
     }
 
     /////////////////////////

@@ -1,7 +1,7 @@
-import Substitute, { SubstituteOf } from "@fluffy-spoon/substitute";
+import Substitute, { SubstituteOf, Arg } from "@fluffy-spoon/substitute";
 import Session, {SessionId, SessionConstructorParameter} from "../src/models/Session";
 import DraftServer, {DraftUserId, UserResolver, SessionResolver, DiscordUserResolver} from "../src/models/DraftServer";
-import { DMChannel, User, Message, Client } from "discord.js";
+import { DMChannel, User, Message, Client, TextChannel } from "discord.js";
 import DraftUser from "../src/models/DraftUser";
 import ENV, {DEFAULTS} from "../src/core/EnvBase";
 import Context from "../src/commands/models/Context";
@@ -50,6 +50,7 @@ export interface MocksInterface {
     mockDraftUser: DraftUser,
     userResolver: UserResolver,
     discordUserResolver: DiscordUserResolver,
+    mockAnnouncementChannel: SubstituteOf<TextChannel>,
     mockDiscordUser: SubstituteOf<User>,
     mockDmChannel: SubstituteOf<DMChannel>,
     mockMessage: SubstituteOf<Message>,
@@ -177,6 +178,8 @@ export default function setup(): MocksInterface {
         userResolver: {resolve: (userId: DraftUserId) => generatedUsers[userId] },
         discordUserResolver: {resolve: (discordUserId: string) => generatedDiscordUsers[discordUserId] },
 
+        mockAnnouncementChannel: Substitute.for<TextChannel>(),
+
         // Set up the mock for the output channel (super helpful for validation)
         mockDmChannel: Substitute.for<DMChannel>(),
 
@@ -204,6 +207,9 @@ export default function setup(): MocksInterface {
     
     // Attach the output DM channel to the Discord User
     mocks.mockDiscordUser.createDM().resolves(mocks.mockDmChannel);
+
+    // Attach the message to the announcement channel
+    mocks.mockAnnouncementChannel.send(Arg.any()).resolves(mocks.mockMessage);
 
     const frozen = Object.freeze(mocks);
     builtMocks = frozen;

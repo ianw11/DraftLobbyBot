@@ -44,17 +44,15 @@ export default class DraftServer {
             await this.closeSession(draftUser);
         }
 
-        // First send the message that will be monitored
-        const message = await this.announcementChannel.send("Creating session...");
-
-        // Then build the actual Session object
-        const session = new Session(message, this.userResolver, this.env, {...(parameters||{}), ownerId: draftUser.getUserId()});
+        // First build the actual Session object
+        const session = new Session(this.userResolver, this.env, {...(parameters||{}), ownerId: draftUser.getUserId()});
+        const [sessionId, message] = await session.resetMessage(this.announcementChannel);
         
         // Persist the Session object
-        this.sessions[session.sessionId] = session;
-        draftUser.setCreatedSessionId(session.sessionId);
+        this.sessions[sessionId] = session;
         
         // Add the creator to their Session
+        draftUser.setCreatedSessionId(sessionId);
         await session.addPlayer(draftUser);
 
         // Update and react to indicate we're ready to go
@@ -78,7 +76,9 @@ export default class DraftServer {
 
         if (session) {
             await session.terminate(started);
-            this.sessions[session.sessionId] = undefined;
+            if (session.sessionId) {
+                this.sessions[session.sessionId] = undefined;
+            }
         }
         
         draftUser.setCreatedSessionId(null);

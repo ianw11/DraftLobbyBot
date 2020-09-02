@@ -50,7 +50,7 @@ export function replaceFromDict(inputStr: string, delimiter: string, dict: Recor
             }
             // We found a normal word, don't perform a replacement and put the delimiter back in
             withinDelimiter = false;
-            return `${accumulator}%${current}`;
+            return `${accumulator}${delimiter}${current}`;
         }
 
         return `${accumulator}${current}`;
