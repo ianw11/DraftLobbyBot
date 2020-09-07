@@ -15,12 +15,13 @@ let mocks: MocksInterface;
 let session: Session;
 
 function resetSession(sessionParameters: Partial<SessionConstructorParameter>) {
-    session = new Session(mocks.mockMessage, mocks.userResolver, mockEnv, sessionParameters);
+    session = new Session(mocks.userResolver, mockEnv, sessionParameters);
 }
 
 beforeEach(() => {
     mocks = setup();
     resetSession(mocks.mockSessionParameters);
+    session.resetMessage(mocks.mockAnnouncementChannel);
 })
 
 describe("Basic Session Checks", () => {

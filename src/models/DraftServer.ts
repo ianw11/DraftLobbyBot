@@ -78,32 +78,20 @@ export default class DraftServer {
             throw new Error("Cannot create a session - announcement channel was not set up.  Bot might require a restart");
         }
 
-        // First send the message that will be monitored
-        const message = await this.announcementChannel.send("Creating session...");
-
-        // Then build the actual Session object
-        const params = {
-            ...(parameters||{}), 
-            ...draftUser && {ownerId: draftUser.getUserId()}
-        }
-        const session = new Session(message, this.userResolver, this.env, params);
+        // First build the actual Session object
+        const session = new Session(this.userResolver, this.env, {...(parameters||{}), ownerId: draftUser.getUserId()});
+        const [sessionId, message] = await session.resetMessage(this.announcementChannel);
         
         // Persist the Session object
-        this.sessions[session.sessionId] = session;
+        this.sessions[sessionId] = session;
         
-        // If there's a specified session owner, close their other sessions and
-        // add the creator to their Session
+        // Add the creator to their Session
         if (draftUser) {
-            if (draftUser.getCreatedSessionId()) {
-                await this.closeSession(draftUser);
-            }
-            draftUser.setCreatedSessionId(session.sessionId);
+            draftUser.setCreatedSessionId(sessionId);
             await session.addPlayer(draftUser);
         }
-        else {
-            session.updateMessage(); //otherwise we won't add the embed
-        }
 
+        
         // Update and react to indicate we're ready to go
         await message.react(this.env.EMOJI);
     }
@@ -125,7 +113,9 @@ export default class DraftServer {
 
         if (session) {
             await session.terminate(started);
-            this.sessions[session.sessionId] = undefined;
+            if (session.sessionId) {
+                this.sessions[session.sessionId] = undefined;
+            }
         }
         
         draftUser.setCreatedSessionId(null);
