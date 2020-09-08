@@ -2,7 +2,7 @@ import ENV from '../core/EnvBase';
 import {DraftUserId, UserResolver, SessionResolver, DiscordUserResolver} from "./types/DraftServerTypes";
 import Session, {SessionId, SessionParameters} from "./Session";
 import DraftUser from "./DraftUser";
-import { User, Message, TextChannel, Guild, GuildChannel, PartialUser, ClientUser } from "discord.js";
+import { User, Message, TextChannel, Guild, GuildChannel, PartialUser } from "discord.js";
 import { CronJob } from 'cron';
 import CronJobCache from './CronJobCache';
 
@@ -126,7 +126,7 @@ export default class DraftServer {
         throw new Error("Could not find Session for the provided SessionId");
     }
 
-    getDraftUser(user: User | PartialUser ): DraftUser {
+    getDraftUser(user: User | PartialUser): DraftUser {
         let draftUser = this.getDraftUserById(user.id, false);
         if (!draftUser) {
             draftUser = new DraftUser(user.id, this.discordUserResolver, this.sessionResolver);
