@@ -3,14 +3,8 @@ import {DraftUserId, UserResolver, SessionResolver, DiscordUserResolver} from ".
 import Session, {SessionId, SessionParameters} from "./Session";
 import DraftUser from "./DraftUser";
 import { User, Message, TextChannel, Guild, GuildChannel, PartialUser, ClientUser } from "discord.js";
-import {CronJob, job} from 'cron';
-
-class CronEntry {
-    cronTask = "";
-    sessionTime = "";
-}
-
-type CronJobFile = Record<string, CronEntry>;
+import { CronJob } from 'cron';
+import CronJobCache from './CronJobCache';
 
 export {
     DraftUserId,
@@ -38,33 +32,7 @@ export default class DraftServer {
         this.guild = guild;
         this.env = env;
 
-        this.schedulers = [];
-
-        let ServerCronJobs: CronJobFile = {};
-        try {
-            // eslint-disable-next-line @typescript-eslint/no-var-requires
-            ServerCronJobs = require('../../config/cronjobs.json') as CronJobFile;
-        } catch (e) {
-            console.log("Could not find config/cronjobs.json - starting server without scheduling");
-        }
-        const cron_entry_for_guild: CronEntry = ServerCronJobs[guild.id];
-        if (cron_entry_for_guild != null) {
-            const scheduler: CronJob = job(
-                cron_entry_for_guild.cronTask, 
-                () => {
-                    const scheduledWhen: Partial<SessionParameters> = {
-                        description: "Scheduled Draft Pod #1",
-                        fireWhenFull: false,
-                        date: new Date(`${new Date().toDateString()} ${cron_entry_for_guild.sessionTime}`)
-                    }
-                    this.createSession(undefined,scheduledWhen);
-                },
-                null,
-                true, 
-                'America/Chicago');
-            scheduler.start();
-            this.schedulers.push(scheduler);
-        } 
+        this.schedulers = CronJobCache.singleton.getCronJobs(guild, this);
 
         this.findOrCreateAnnouncementChannel();
     }
@@ -79,7 +47,7 @@ export default class DraftServer {
         }
 
         // First build the actual Session object
-        const session = new Session(this.userResolver, this.env, {...(parameters||{}), ownerId: draftUser.getUserId()});
+        const session = new Session(this.userResolver, this.env, {...(parameters||{}), ...draftUser && {ownerId: draftUser.getUserId()}});
         const [sessionId, message] = await session.resetMessage(this.announcementChannel);
         
         // Persist the Session object
@@ -90,7 +58,6 @@ export default class DraftServer {
             draftUser.setCreatedSessionId(sessionId);
             await session.addPlayer(draftUser);
         }
-
         
         // Update and react to indicate we're ready to go
         await message.react(this.env.EMOJI);
@@ -159,7 +126,7 @@ export default class DraftServer {
         throw new Error("Could not find Session for the provided SessionId");
     }
 
-    getDraftUser(user: User | PartialUser | ClientUser): DraftUser {
+    getDraftUser(user: User | PartialUser ): DraftUser {
         let draftUser = this.getDraftUserById(user.id, false);
         if (!draftUser) {
             draftUser = new DraftUser(user.id, this.discordUserResolver, this.sessionResolver);
