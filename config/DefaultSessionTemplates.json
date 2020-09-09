@@ -7,6 +7,11 @@
             "name": "Pickup Draft",
             "description": "Join if interested!",
             "fireWhenFull": false
+        },
+
+        "scheduled": {
+            "name": "Scheduled",
+            "fireWhenFull": false
         }
     }
 }

@@ -29,7 +29,9 @@ export default class CronJobCache {
     }
 
     getCronJobs(guild: Guild, server: DraftServer): CronJob[] {
+
         const cron_entries_for_guild: CronEntry[] = ServerCronJobs[guild.id];
+        if (!cron_entries_for_guild) return [];
         return cron_entries_for_guild.map(entry => job(
             entry.cronTask, 
             () => {
