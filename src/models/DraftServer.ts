@@ -3,6 +3,8 @@ import {DraftUserId, UserResolver, SessionResolver, DiscordUserResolver} from ".
 import Session, {SessionId, SessionParameters} from "./Session";
 import DraftUser from "./DraftUser";
 import { User, Message, TextChannel, Guild, GuildChannel, PartialUser } from "discord.js";
+import { CronJob } from 'cron';
+import CronJobCache from './CronJobCache';
 
 export {
     DraftUserId,
@@ -24,9 +26,13 @@ export default class DraftServer {
     readonly sessionResolver: SessionResolver = {resolve: (sessionId: SessionId) => this.getSession(sessionId)};
     readonly discordUserResolver: DiscordUserResolver = {resolve: (userId: string) => this.guild.member(userId)?.user }
 
+    private schedulers: CronJob[];
+
     constructor (guild: Guild, env: ENV) {
         this.guild = guild;
         this.env = env;
+
+        this.schedulers = CronJobCache.singleton.getCronJobs(guild, this);
 
         this.findOrCreateAnnouncementChannel();
     }
@@ -35,26 +41,24 @@ export default class DraftServer {
     // SESSION MANAGEMENT METHODS //
     ////////////////////////////////
 
-    async createSession(draftUser: DraftUser, parameters?: Partial<SessionParameters>): Promise<void> {
+    async createSession(draftUser?: DraftUser, parameters?: Partial<SessionParameters>): Promise<void> {
         if (!this.announcementChannel) {
             throw new Error("Cannot create a session - announcement channel was not set up.  Bot might require a restart");
         }
-        // Close out any prior Sessions
-        if (draftUser.getCreatedSessionId()) {
-            await this.closeSession(draftUser);
-        }
 
         // First build the actual Session object
-        const session = new Session(this.userResolver, this.env, {...(parameters||{}), ownerId: draftUser.getUserId()});
+        const session = new Session(this.userResolver, this.env, {...(parameters||{}), ...draftUser && {ownerId: draftUser.getUserId()}});
         const [sessionId, message] = await session.resetMessage(this.announcementChannel);
         
         // Persist the Session object
         this.sessions[sessionId] = session;
         
         // Add the creator to their Session
-        draftUser.setCreatedSessionId(sessionId);
-        await session.addPlayer(draftUser);
-
+        if (draftUser) {
+            draftUser.setCreatedSessionId(sessionId);
+            await session.addPlayer(draftUser);
+        }
+        
         // Update and react to indicate we're ready to go
         await message.react(this.env.EMOJI);
     }
@@ -82,6 +86,10 @@ export default class DraftServer {
         }
         
         draftUser.setCreatedSessionId(null);
+    }
+
+    stopSchedulers(): void {
+        this.schedulers.forEach( job => job.stop());
     }
 
     ////////////////////////
