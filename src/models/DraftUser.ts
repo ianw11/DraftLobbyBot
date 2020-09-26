@@ -116,7 +116,7 @@ export default class DraftUser {
 
     async printOwnedSessionInfo(): Promise<void> {
         if (!this.createdSessionId) {
-            await this.sendDM("Cannot send info - you haven't created a draft session");
+            await this.sendDM("Cannot send info - you haven't created a session");
             return;
         }
         const session = this.sessionResolver.resolve(this.createdSessionId);

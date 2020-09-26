@@ -190,7 +190,7 @@ export default class Session {
         const userId = draftUser.getUserId();
 
         if (userId === this.ownerId) {
-            throw new Error("Owner trying to leave - use `$delete` to delete draft");
+            throw new Error("Owner trying to leave - use `$delete` to delete session");
         }
 
         const joinedIndex = this.joinedPlayers.indexOf(userId);
@@ -327,7 +327,7 @@ export default class Session {
             },
             {
                 name: "Attendance",
-                value: `Number joined: ${numJoined}\nCapacity: ${sessionCapacity}\n${fireWhenFull ? "Draft will launch when capacity is reached" : `Waitlisted: ${numWaitlisted}`}`
+                value: `Number joined: ${numJoined}\nCapacity: ${sessionCapacity}\n${fireWhenFull ? "Session will launch when capacity is reached" : `Waitlisted: ${numWaitlisted}`}`
             }
         ];
 
