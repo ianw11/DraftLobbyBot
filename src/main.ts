@@ -157,6 +157,10 @@ export default function main(env: ENV): void {
     client.on('messageReactionAdd', onReaction(env, async (draftUser, session) => await session.addPlayer(draftUser)));
     client.on('messageReactionRemove', onReaction(env, async (draftUser, session) => await session.removePlayer(draftUser)));
 
-    // Yes, this is THE login call
-    client.login(DISCORD_BOT_TOKEN);
+    if (DISCORD_BOT_TOKEN) {
+        // Yes, this is THE login call
+        client.login(DISCORD_BOT_TOKEN);
+    } else {
+        console.error("Unable to login - DISCORD_BOT_TOKEN was not properly set up");
+    }
 }

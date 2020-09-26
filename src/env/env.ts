@@ -11,7 +11,9 @@ try {
         throw new Error("config/env.json MUST define DISCORD_BOT_TOKEN - ensure the field is defined");
     }
 } catch (e) {
-    throw new Error("Could not find config/env.json - make sure this file exists");
+    // throw new Error("Could not find config/env.json - make sure this file exists");
+    console.error("Could not find config/env.json - make sure this file exists");
+    ENV_JSON.DISCORD_BOT_TOKEN = "";
 }
 
 
