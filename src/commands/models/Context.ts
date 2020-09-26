@@ -1,6 +1,6 @@
 import { Client, User, Message } from "discord.js";
 import DraftServer, { UserResolver, SessionResolver } from "../../models/DraftServer";
-import ENV from "../../core/EnvBase";
+import ENV from "../../env/EnvBase";
 import DraftUser from "../../models/DraftUser";
 
 export interface ContextProps {

@@ -1,4 +1,4 @@
-import { TemplateSessionParameters } from "./Session";
+import { TemplateSessionParameters } from "./types/SessionTypes";
 
 type OptionalSessionParameter = Partial<TemplateSessionParameters> | undefined;
 type SessionParameterMap = Record<string, OptionalSessionParameter>;

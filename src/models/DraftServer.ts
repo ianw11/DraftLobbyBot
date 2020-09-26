@@ -1,4 +1,4 @@
-import ENV from '../core/EnvBase';
+import ENV from '../env/EnvBase';
 import {DraftUserId, UserResolver, SessionResolver, DiscordUserResolver} from "./types/DraftServerTypes";
 import Session, {SessionId, SessionParameters} from "./Session";
 import DraftUser from "./DraftUser";

@@ -3,7 +3,7 @@ import Session, {SessionId, SessionConstructorParameter} from "../src/models/Ses
 import DraftServer, {DraftUserId, UserResolver, SessionResolver, DiscordUserResolver} from "../src/models/DraftServer";
 import { DMChannel, User, Message, Client, TextChannel } from "discord.js";
 import DraftUser from "../src/models/DraftUser";
-import ENV, {DEFAULTS} from "../src/core/EnvBase";
+import ENV, {DEFAULTS} from "../src/env/EnvBase";
 import Context from "../src/commands/models/Context";
 
 /*
@@ -112,7 +112,7 @@ export function buildContext(parameters: string[] = ["NO_PARAMS"]): Context {
 This is a generator function (identified as "function*") that will make
 an unlimited amount of DraftUsers with always increasing ids.
 */
-function* uniqueUserGenerator(userId?: DraftUserId, name?: string) {
+function* uniqueUserGenerator(userId?: DraftUserId, name?: string): Generator<SubstituteOf<DraftUser>> {
     let id = 0;
     while (true) {
         const draftUser: SubstituteOf<DraftUser> = Substitute.for<DraftUser>();
@@ -135,8 +135,8 @@ function persistUser(draftUser: SubstituteOf<DraftUser>): SubstituteOf<DraftUser
 }
 
 // We then take the user generator function and create 2 generators (one with overrides)
-const basicUserGenerator: Generator<SubstituteOf<DraftUser>> = uniqueUserGenerator();
-const customUserGenerator: Generator<SubstituteOf<DraftUser>> = uniqueUserGenerator(mockConstants.DISCORD_USER_ID, mockConstants.USERNAME);
+const basicUserGenerator = uniqueUserGenerator();
+const customUserGenerator = uniqueUserGenerator(mockConstants.DISCORD_USER_ID, mockConstants.USERNAME);
 // The generators are then wrapped in a persistance function and made available to test runners
 const generateBasicUser = () => persistUser(basicUserGenerator.next().value as SubstituteOf<DraftUser>);
 const generateCustomUser = () => persistUser(customUserGenerator.next().value as SubstituteOf<DraftUser>);
@@ -164,8 +164,12 @@ export default function setup(): MocksInterface {
             description: 'MOCK SESSION DESCRIPTION',
             fireWhenFull: false,
             sessionCapacity: 8,
-            url: 'MOCK SESSION URL',
-            ownerId: DISCORD_USER_ID
+            templateUrl: 'MOCK SESSION URL',
+            ownerId: DISCORD_USER_ID,
+
+            sessionConfirmMessage: 'MOCK CONFIRM MESSAGE',
+            sessionWaitlistMessage: 'MOCK WAITLIST MESSAGE',
+            sessionCancelMessage: 'MOCK CANCEL MESSAGE'
         },
         mockSession: Substitute.for<Session>(),
 
@@ -198,9 +202,11 @@ export default function setup(): MocksInterface {
     mockSession.getDescription().returns(mockSessionParameters.description);
     mockSession.getFireWhenFull().returns(mockSessionParameters.fireWhenFull);
     mockSession.getSessionCapacity().returns(mockSessionParameters.sessionCapacity);
-    mockSession.getUrl().returns(mockSessionParameters.url);
     mockSession.getNumConfirmed().returns(NUM_CONFIRMED);
     mockSession.getNumWaitlisted().returns(NUM_IN_WAITLIST);
+    mockSession.getConfirmedMessage().returns(mockSessionParameters.sessionConfirmMessage);
+    mockSession.getWaitlistMessage().returns(mockSessionParameters.sessionWaitlistMessage);
+    mockSession.getCancelledMessage().returns(mockSessionParameters.sessionCancelMessage);
 
     // Make the session available to the resolver and update the stub
     mocks.sessionResolver = {resolve: (sessionId: SessionId) => sessionId === SESSION_ID ? mockSession : null };
@@ -210,6 +216,7 @@ export default function setup(): MocksInterface {
 
     // Attach the message to the announcement channel
     mocks.mockAnnouncementChannel.send(Arg.any()).resolves(mocks.mockMessage);
+    //mocks.mockAnnouncementChannel.send(Arg.is(arg => typeof arg === 'string')).resolves(mocks.mockMessage);
 
     const frozen = Object.freeze(mocks);
     builtMocks = frozen;

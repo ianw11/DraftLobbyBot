@@ -1,5 +1,5 @@
 import {SessionParameters, SessionId, SessionConstructorParameter, TemplateSessionParameters} from './types/SessionTypes';
-import ENV, {buildSessionParameters} from '../core/EnvBase';
+import {ENV, buildDefaultSessionParameters} from '../env/env';
 import { Message, MessageEmbed, EmbedFieldData, TextChannel } from "discord.js";
 import DraftUser from "./DraftUser";
 import { removeFromArray, replaceFromDict, asyncForEach } from "../Utils";
@@ -40,29 +40,23 @@ export default class Session {
             this.ownerId = params.ownerId;
         }
 
-        const defaultName = this.ownerId ? `${this.userResolver.resolve(this.ownerId).getDisplayName()}'s Draft` : this.env.DEFAULT_SESSION_NAME;
-
         this.params = {
-            ...buildSessionParameters(this.env),
-            ...{
-                name: defaultName
-            },
+            ...buildDefaultSessionParameters(this.env),
             ...(params || {})
         };
+    }
+
+    async resetMessage(channel: TextChannel): Promise<[SessionId, Message]> {
+        this.message = await channel.send(this.getEmbed());
+
+        this._sessionId = this.message.id;
+
+        return [this._sessionId, this.message];
     }
 
     /////////////////////////
     // GETTERS AND SETTERS //
     /////////////////////////
-
-    async resetMessage(channel: TextChannel): Promise<[SessionId, Message]> {
-        const message = await channel.send(this.getEmbed());
-
-        this.message =  message;
-        this._sessionId = message.id;
-
-        return [this._sessionId, this.message];
-    }
 
     get sessionId(): SessionId {
         if (!this._sessionId) {
@@ -91,23 +85,33 @@ export default class Session {
 
     async setName(name: string): Promise<void> {
         this.params.name = name;
+        this.params._generatedName = undefined;
         await this.updateMessage();
     }
     getName(): string {
-        return this.params.name;
+        if (!this.params._generatedName) {
+            if (this.ownerId && this.params.name) {
+                const name = this.userResolver.resolve(this.ownerId).getDisplayName();
+                this.params._generatedName = replaceFromDict(this.params.name, "%", {
+                    USER: name,
+                    NAME: name
+                });
+            } else {
+                this.params._generatedName = this.params.unownedSessionName;
+            }
+        }
+        return this.params._generatedName;
     }
 
-    setUrl(url?: string): void {
-        if (url) {
-            url = replaceFromDict(url, '%', {HRI: hri.random()});
-        }
-        this.params.url = url;
+    setTemplateUrl(templateUrl?: string): void {
+        this.params.templateUrl = templateUrl || "<NO URL>";
     }
-    getUrl(): string {
-        if (!this.params.url) {
-            this.params.url = replaceFromDict(this.env.FALLBACK_SESSION_URL, '%', {HRI: hri.random()});
+
+    private getUrl(regenerate = false): string {
+        if (regenerate || !this.params._generatedUrl) {
+            this.params._generatedUrl = replaceFromDict(this.params.templateUrl, '%', {HRI: hri.random()});
         }
-        return this.params.url;
+        return this.params._generatedUrl;
     }
 
     async setSessionCapacity(sessionCapacity: number): Promise<void> {
@@ -227,6 +231,23 @@ export default class Session {
     async terminate(started = false): Promise<void> {
         this.sessionClosed = true;
 
+        // If the session started noramally, pod the users
+        /*
+        await asyncForEach(fillPodsFirst(this.joinedPlayers.length, 8, true), async (count) => {
+            const url = this.getUrl(true);
+            const pod = {
+                url: url,
+                confirmMessage: this.getConfirmedMessage({URL: url})
+            };
+
+            for (let i = 0; i < count; ++i) {
+                const playerId = this.joinedPlayers.shift() as string;
+                const user = this.userResolver.resolve(playerId);
+                await user.sessionClosed(this, pod);
+            }
+        });
+        */
+
         // Notify both joined and waitlisted that this Session is closed
         const callback = async (draftUserId: DraftUserId) => await this.userResolver.resolve(draftUserId).sessionClosed(this, started);
         await asyncForEach(this.joinedPlayers, callback);
@@ -244,15 +265,36 @@ export default class Session {
         }
     }
 
+    ///////////////////////////////
+    // Output Formatting Methods //
+    ///////////////////////////////
+
+    getConfirmedMessage(overrides?: Record<string, string>): string {
+        return this.replaceMessage(this.params.sessionConfirmMessage, overrides);
+    }
+
+    getWaitlistMessage(): string {
+        return this.replaceMessage(this.params.sessionWaitlistMessage);
+    }
+
+    getCancelledMessage(): string {
+        return this.replaceMessage(this.params.sessionCancelMessage);
+    }
+
+    private replaceMessage(msg: string, overrides = {}): string {
+        return replaceFromDict(msg, "%", {...{NAME: this.getName(), URL: this.getUrl()}, ...overrides});
+    }
+
     /////////////////////////
     // CONVENIENCE METHODS //
     /////////////////////////
 
     async broadcast(message: string, includeWaitlist = false): Promise<void> {
-        let intro = `EVENT ${this.params.name}`;
+        const sessionName = this.getName();
+        let intro = `EVENT ${sessionName}`;
         if (this.ownerId) {
             const owner = this.userResolver.resolve(this.ownerId);
-            intro = `${owner.getDisplayName()} (${this.params.name})`
+            intro = `${owner.getDisplayName()} (${sessionName})`
         }
         const callback = async (userId: DraftUserId) => {
             if (userId === this.ownerId) {
@@ -268,12 +310,12 @@ export default class Session {
     }
 
     toSimpleString(): string {
-        const {name, date, description} = this.params;
-        return `**${name}** ${date ? `- starts at ${date.toString()} ` : ''} || ${description}`;
+        const {date, description} = this.params;
+        return `**${this.getName()}** ${date ? `- starts at ${date.toString()} ` : ''} || ${description}`;
     }
 
     getEmbed(provideOwnerInformation?: boolean): MessageEmbed {
-        const {name, description, sessionCapacity, fireWhenFull, date} = this.params;
+        const {description, sessionCapacity, fireWhenFull, date} = this.params;
         const numJoined = this.getNumConfirmed();
         const numWaitlisted = this.getNumWaitlisted();
 
@@ -285,7 +327,7 @@ export default class Session {
             },
             {
                 name: "Attendance",
-                value: `Number joined: ${numJoined} <> Capacity: ${sessionCapacity} <> ${fireWhenFull ? "Draft will launch when capacity is reached" : `Waitlisted: ${numWaitlisted}`}`
+                value: `Number joined: ${numJoined}\nCapacity: ${sessionCapacity}\n${fireWhenFull ? "Draft will launch when capacity is reached" : `Waitlisted: ${numWaitlisted}`}`
             }
         ];
 
@@ -310,8 +352,8 @@ export default class Session {
 
         return new MessageEmbed()
             .setColor(3447003)
-            .setTitle(name)
-            .setAuthor("Your friendly neighborhood Draft Bot")
+            .setTitle(this.getName())
+            // .setAuthor("Your friendly neighborhood Draft Bot")
             .setDescription(description)
             .addFields(fields);
     }

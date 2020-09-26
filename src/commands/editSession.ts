@@ -50,7 +50,7 @@ export default class EditSessionCommand implements Command {
                 session.setFireWhenFull(valueLower === 'true');
                 break;
             case 'url':
-                session.setUrl(value);
+                session.setTemplateUrl(value);
                 break;
             default:
                 break;

@@ -1,4 +1,4 @@
-import {removeFromArray, parseDate, asyncForEach, curryReplaceFromDict} from '../src/Utils';
+import {removeFromArray, parseDate, asyncForEach, curryReplaceFromDict, fillPodsFirst, evenlySplitPods} from '../src/Utils';
 import { expect } from 'chai';
 
 describe('test removeFromArray', () => {
@@ -39,14 +39,45 @@ describe('test removeFromArray', () => {
     });
 });
 
-describe.skip('test parsing date', () => {
+describe('test parsing date', () => {
     it('parses a fully formatted date', () => {
         const dateString = '2011-10-10T14:48:00.000+09:00';
-        const expectedDate = Date.parse(dateString);
+        const expectedDate = new Date(dateString);
 
         const date = parseDate([dateString]);
 
         expect(date).to.deep.equal(expectedDate);
+        expect(date.getTime()).equals(expectedDate.getTime());
+    });
+
+    it('parses just a time', () => {
+        const timeString = "20:30";
+        const today = new Date();
+
+        const date = parseDate([timeString]);
+
+        expect(date.getHours()).equals(20);
+        expect(date.getMinutes()).equals(30);
+
+        expect(date.getDay()).equals(today.getDay());
+        expect(date.getMonth()).equals(today.getMonth());
+    });
+
+    it('fails to parse a bad time', () => {
+        const badTimeString = "5:";
+
+        expect(parseDate([badTimeString])).to.throw;
+    });
+
+    it('parses a full user date string', () => {
+        const userInput = "8 22 17:30";
+
+        const date = parseDate([userInput]);
+
+        expect(date.getMonth()).equals(8 - 1); // -1 because _apparently_ months are 0-indexed
+        expect(date.getDate()).equals(22);
+        expect(date.getHours()).equals(17);
+        expect(date.getMinutes()).equals(30);
     });
 });
 
@@ -122,5 +153,93 @@ describe('test asyncForEach (this could take up to 2 seconds)', () => {
         await asyncForEach(expected, callback);
 
         expect(outerArr).deep.equals(expected);
+    });
+});
+
+describe('test fillPodsFirst', () => {
+    it('should work for equal quantity and podSize', () => {
+        expect(fillPodsFirst(8, 8)).deep.equals([8]);
+    });
+
+    it('should work for quantity = N*podSize', () => {
+        expect(fillPodsFirst(16, 8)).deep.equals([8, 8]);
+        expect(fillPodsFirst(40, 8)).deep.equals([8, 8, 8, 8, 8]);
+    });
+
+    it('should handle quantity < podSize', () => {
+        expect(fillPodsFirst(7, 8)).deep.equals([7]);
+        expect(fillPodsFirst(1, 8)).deep.equals([1]);
+        expect(fillPodsFirst(0, 8)).deep.equals([]);
+    });
+
+    it('should handle uneven quantities', () => {
+        expect(fillPodsFirst(13, 8)).deep.equals([8, 5]);
+        expect(fillPodsFirst(15, 8)).deep.equals([8, 7]);
+        expect(fillPodsFirst(17, 8)).deep.equals([8, 8, 1]);
+        expect(fillPodsFirst(18, 8)).deep.equals([8, 8, 2]);
+        expect(fillPodsFirst(19, 8)).deep.equals([8, 8, 3]);
+
+        expect(fillPodsFirst(39, 8)).deep.equals([8, 8, 8, 8, 7]);
+        expect(fillPodsFirst(41, 8)).deep.equals([8, 8, 8, 8, 8, 1]);
+        expect(fillPodsFirst(43, 8)).deep.equals([8, 8, 8, 8, 8, 3]);
+        expect(fillPodsFirst(44, 8)).deep.equals([8, 8, 8, 8, 8, 4]);
+        expect(fillPodsFirst(45, 8)).deep.equals([8, 8, 8, 8, 8, 5]);
+        expect(fillPodsFirst(46, 8)).deep.equals([8, 8, 8, 8, 8, 6]);
+        expect(fillPodsFirst(47, 8)).deep.equals([8, 8, 8, 8, 8, 7]);
+    });
+
+    it('should handle disband waitlist', () => {
+        expect(fillPodsFirst(7, 8, false)).deep.equals([]);
+        expect(fillPodsFirst(1, 8, false)).deep.equals([]);
+        expect(fillPodsFirst(0, 8, false)).deep.equals([]);
+    });
+
+    it('should handle uneven quantities, disbanding waitlist', () => {
+        expect(fillPodsFirst(13, 8, false)).deep.equals([8]);
+        expect(fillPodsFirst(15, 8, false)).deep.equals([8]);
+        expect(fillPodsFirst(17, 8, false)).deep.equals([8, 8]);
+        expect(fillPodsFirst(18, 8, false)).deep.equals([8, 8]);
+        expect(fillPodsFirst(19, 8, false)).deep.equals([8, 8]);
+
+        expect(fillPodsFirst(39, 8, false)).deep.equals([8, 8, 8, 8]);
+        expect(fillPodsFirst(41, 8, false)).deep.equals([8, 8, 8, 8, 8]);
+        expect(fillPodsFirst(43, 8, false)).deep.equals([8, 8, 8, 8, 8]);
+        expect(fillPodsFirst(44, 8, false)).deep.equals([8, 8, 8, 8, 8]);
+        expect(fillPodsFirst(45, 8, false)).deep.equals([8, 8, 8, 8, 8]);
+        expect(fillPodsFirst(46, 8, false)).deep.equals([8, 8, 8, 8, 8]);
+        expect(fillPodsFirst(47, 8, false)).deep.equals([8, 8, 8, 8, 8]);
+    });
+});
+
+describe('test evenlySplitPods', () => {
+    it('should work for equal quantity and podSize', () => {
+        expect(evenlySplitPods(8, 8)).deep.equals([8]);
+    });
+
+    it('should work for quantity = N*podSize', () => {
+        expect(evenlySplitPods(16, 8)).deep.equals([8, 8]);
+        expect(evenlySplitPods(40, 8)).deep.equals([8, 8, 8, 8, 8]);
+    });
+
+    it('should handle quantity < podSize', () => {
+        expect(evenlySplitPods(7, 8)).deep.equals([7]);
+        expect(evenlySplitPods(1, 8)).deep.equals([1]);
+        expect(evenlySplitPods(0, 8)).deep.equals([]);
+    });
+
+    it('should handle uneven quantities', () => {
+        expect(evenlySplitPods(13, 8)).deep.equals([7, 6]);
+        expect(evenlySplitPods(15, 8)).deep.equals([8, 7]);
+        expect(evenlySplitPods(17, 8)).deep.equals([6, 6, 5]);
+        expect(evenlySplitPods(18, 8)).deep.equals([6, 6, 6]);
+        expect(evenlySplitPods(19, 8)).deep.equals([7, 6, 6]);
+
+        expect(evenlySplitPods(39, 8)).deep.equals([8, 8, 8, 8, 7]);
+        expect(evenlySplitPods(41, 8)).deep.equals([7, 7, 7, 7, 7, 6]);
+        expect(evenlySplitPods(43, 8)).deep.equals([8, 7, 7, 7, 7, 7]);
+        expect(evenlySplitPods(44, 8)).deep.equals([8, 8, 7, 7, 7, 7]);
+        expect(evenlySplitPods(45, 8)).deep.equals([8, 8, 8, 7, 7, 7]);
+        expect(evenlySplitPods(46, 8)).deep.equals([8, 8, 8, 8, 7, 7]);
+        expect(evenlySplitPods(47, 8)).deep.equals([8, 8, 8, 8, 8, 7]);
     });
 });

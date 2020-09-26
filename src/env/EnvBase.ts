@@ -1,6 +1,4 @@
-import { SessionParameters } from "../models/types/SessionTypes";
 import { ActivityType } from "discord.js";
-import { replaceFromDict } from "../Utils";
 
 /////////////////////////////////////////////////
 // INTERFACES GROUPING THE CONFIGURABLE VALUES //
@@ -30,17 +28,22 @@ interface EnvClientOptions {
 
 interface EnvSessionOptions {
     DEFAULT_SESSION_NAME: string;
+    DEFAULT_UNOWNED_SESSION_NAME: string;
     DEFAULT_SESSION_CAPACITY: number;
     DEFAULT_SESSION_DESCRIPTION: string,
     DEFAULT_SESSION_FIRE_WHEN_FULL: boolean;
-    FALLBACK_SESSION_URL: string;
+
+    DEFAULT_SESSION_CONFIRM_MESSAGE: string;
+    DEFAULT_SESSION_WAITLIST_MESSAGE: string;
+    DEFAULT_SESSION_CANCELLED_MESSAGE: string;
+    DEFAULT_TEMPLATE_URL: string;
 }
 
 ////////////////////
 // DEFAULT VALUES //
 ////////////////////
 
-const DefaultShallowEnv = {
+const DefaultShallowEnvDefaults = {
     /* NO DISCORD_BOT_TOKEN - SEE ENV.TS FOR INFORMATION */
 
     PREFIX: "!",
@@ -52,18 +55,24 @@ const DefaultShallowEnv = {
     log: console.log
 };
 
-const DefaultEnvClientOptions: EnvClientOptions = {
+const DefaultEnvClientOptionsDefaults: EnvClientOptions = {
     BOT_ACTIVITY: `Magic; %PREFIX%help for help`,
     BOT_ACTIVITY_TYPE: "PLAYING",
     MESSAGE_CACHE_SIZE: 50
 };
 
-const DefaultEnvSessionOptions: EnvSessionOptions = {
-    DEFAULT_SESSION_NAME: "Scheduled Draft",
+const DefaultEnvSessionOptionDefaults: EnvSessionOptions = {
+    DEFAULT_SESSION_NAME: "%NAME%'s Session",
+    DEFAULT_UNOWNED_SESSION_NAME: "New Session",
     DEFAULT_SESSION_CAPACITY: 8,
     DEFAULT_SESSION_DESCRIPTION: "<NO DESCRIPTION PROVIDED>",
     DEFAULT_SESSION_FIRE_WHEN_FULL: false,
-    FALLBACK_SESSION_URL: "https://mtgadraft.herokuapp.com/?session=%HRI%" /* Additional parameter: HRI */
+    // FALLBACK_SESSION_URL: "https://mtgadraft.herokuapp.com/?session=%HRI%", /* Additional parameter: HRI */
+    
+    DEFAULT_SESSION_CONFIRM_MESSAGE: "%NAME% has started",
+    DEFAULT_SESSION_WAITLIST_MESSAGE: "%NAME% has started, but you were on the waitlist",
+    DEFAULT_SESSION_CANCELLED_MESSAGE: "%NAME% has been cancelled",
+    DEFAULT_TEMPLATE_URL: "<NO_URL>"
 };
 
 /////////////////
@@ -73,33 +82,4 @@ const DefaultEnvSessionOptions: EnvSessionOptions = {
 type ENV = ShallowEnv & EnvClientOptions & EnvSessionOptions;
 export default ENV;
 
-export const DEFAULTS = {...DefaultShallowEnv, ...DefaultEnvClientOptions, ...DefaultEnvSessionOptions};
-
-export const buildSessionParameters = (env: ENV): SessionParameters => {
-    return {
-        name: env.DEFAULT_SESSION_NAME,
-        sessionCapacity: env.DEFAULT_SESSION_CAPACITY,
-        description: env.DEFAULT_SESSION_DESCRIPTION,
-        fireWhenFull: env.DEFAULT_SESSION_FIRE_WHEN_FULL
-    };
-}
-
-/**
- * Allows strings defined in 
- * 
- * @param str The string with possible ENV values
- * @param env The current ENV
- * 
- * @returns A new string with substituted values
- */
-export const replaceStringWithEnv = (str: string, env: ENV): string => {
-    const entries = Object.entries(env).reduce((accumulator, current) => {
-        const [key, value] = current;
-        if (typeof value === 'string') {
-            accumulator[key.toUpperCase()] = value;
-        }
-        return accumulator;
-    }, {} as Record<string, string>);
-
-    return replaceFromDict(str, "%", entries);
-}
+export const DEFAULTS = {...DefaultShallowEnvDefaults, ...DefaultEnvClientOptionsDefaults, ...DefaultEnvSessionOptionDefaults};

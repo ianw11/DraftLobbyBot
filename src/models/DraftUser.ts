@@ -80,12 +80,12 @@ export default class DraftUser {
 
         if (startedNormally) {
             if (waitlisted) {
-                await this.sendDM(`${session.getName()} has started, but you were on the waitlist`);
+                await this.sendDM(session.getWaitlistMessage());
             } else {
-                await this.sendDM(`${session.getName()} has started. Draft url: ${session.getUrl()}`);
+                await this.sendDM(session.getConfirmedMessage());
             }
         } else {
-            await this.sendDM(`${session.getName()} has been cancelled`);
+            await this.sendDM(session.getCancelledMessage());
         }
     }
 

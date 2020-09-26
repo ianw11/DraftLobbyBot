@@ -2,6 +2,7 @@ import Command from './models/Command';
 import Context from './models/Context';
 import SessionTemplateCache from '../models/SessionTemplateCache';
 import { SessionParameters } from '../models/Session';
+import { parseDate } from '../Utils';
 
 
 export default class CreateCommand implements Command {
@@ -16,11 +17,15 @@ export default class CreateCommand implements Command {
             return;
         }
 
-        const templateName = context.parameters[0];
+        const templateName = context.parameters.shift() as string;
 
         const sessionTemplate = SessionTemplateCache.singleton.getTemplate(context.draftServer.serverId, templateName);
         if (!sessionTemplate) {
             throw new Error(`Could not find a template name ${templateName}`);
+        }
+
+        if (context.parameters.length > 0) {
+            sessionTemplate.date = parseDate(context.parameters);
         }
         return sessionTemplate;
     }

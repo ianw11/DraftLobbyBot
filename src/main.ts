@@ -1,4 +1,4 @@
-import ENV, { replaceStringWithEnv } from './core/EnvBase';
+import { ENV, replaceStringWithEnv } from './env/env';
 import {Client, Message, MessageReaction, User, Guild, PartialUser, ClientOptions, PresenceData} from 'discord.js';
 import Commands from './commands';
 import DraftServer from './models/DraftServer';

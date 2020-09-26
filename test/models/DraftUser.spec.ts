@@ -97,7 +97,7 @@ describe('session lifecycle', () => {
 
         await user.sessionClosed(mockSession, false);
 
-        assert(mockDmChannel.received(1).send(`${mockSessionParameters.name} has been cancelled`));
+        assert(mockDmChannel.received(1).send(mockSessionParameters.sessionCancelMessage));
         assert(user.waitlistedSessions.length === 0);
         assert(user.joinedSessions.length === 0);
     });
@@ -108,7 +108,7 @@ describe('session lifecycle', () => {
 
         await user.sessionClosed(mockSession, false);
 
-        assert(mockDmChannel.received(1).send(`${mockSessionParameters.name} has been cancelled`));
+        assert(mockDmChannel.received(1).send(mockSessionParameters.sessionCancelMessage));
         assert(user.waitlistedSessions.length === 0);
         assert(user.joinedSessions.length === 0);
     });
@@ -119,7 +119,7 @@ describe('session lifecycle', () => {
 
         await user.sessionClosed(mockSession, true);
 
-        assert(mockDmChannel.received(1).send(`${mockSessionParameters.name} has started. Draft url: ${mockSessionParameters.url}`));
+        assert(mockDmChannel.received(1).send(mockSessionParameters.sessionConfirmMessage));
         assert(user.waitlistedSessions.length === 0);
         assert(user.joinedSessions.length === 0);
     });
@@ -130,7 +130,7 @@ describe('session lifecycle', () => {
 
         await user.sessionClosed(mockSession, true);
 
-        assert(mockDmChannel.received(1).send(`${mockSessionParameters.name} has started, but you were on the waitlist`));
+        assert(mockDmChannel.received(1).send(mockSessionParameters.sessionWaitlistMessage));
         assert(user.waitlistedSessions.length === 0);
         assert(user.joinedSessions.length === 0);
     });

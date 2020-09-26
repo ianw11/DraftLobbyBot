@@ -11,45 +11,52 @@ Could use testing:
  */
 
 let mocks: MocksInterface;
-
 let session: Session;
 
-function resetSession(sessionParameters: Partial<SessionConstructorParameter>) {
-    session = new Session(mocks.userResolver, mockEnv, sessionParameters);
+beforeEach(async () => {
+    mocks = setup();
+    await resetSession();
+});
+
+async function resetSession(overrideSessionParameters?: Partial<SessionConstructorParameter>) {
+    session = new Session(mocks.userResolver, mockEnv, {...mocks.mockSessionParameters, ...(overrideSessionParameters || {})});
+    await session.resetMessage(mocks.mockAnnouncementChannel);
 }
 
-beforeEach(() => {
-    mocks = setup();
-    resetSession(mocks.mockSessionParameters);
-    session.resetMessage(mocks.mockAnnouncementChannel);
-})
-
 describe("Basic Session Checks", () => {
-    it('has default parameters', () => {
+    it('has default parameters', async () => {
         const {USERNAME, DISCORD_USER_ID} = mockConstants;
-        const {url} = mocks.mockSessionParameters;
+        const {templateUrl, sessionWaitlistMessage} = mocks.mockSessionParameters;
+
+        const overrideConfirmMessageBase = "CONFIRM ";
+        const overrideConfirmMessage = `${overrideConfirmMessageBase}%URL%`;
+        const overrideCancelMessage = "CANCEL";
 
         const date = new Date();
-        resetSession({ownerId: DISCORD_USER_ID, date: date, url: url});
+        await resetSession({ownerId: DISCORD_USER_ID, description: mockEnv.DEFAULT_SESSION_DESCRIPTION, date: date, name: "%NAME%'s Draft", sessionConfirmMessage: overrideConfirmMessage, sessionCancelMessage: overrideCancelMessage});
         
         expect(session.getName()).to.equal(`${USERNAME}'s Draft`);
         expect(session.getFireWhenFull()).to.equal(mockEnv.DEFAULT_SESSION_FIRE_WHEN_FULL);
         expect(session.getSessionCapacity()).to.equal(mockEnv.DEFAULT_SESSION_CAPACITY);
         expect(session.getDescription()).to.equal(mockEnv.DEFAULT_SESSION_DESCRIPTION);
         expect(session.getDate()).to.deep.equal(date);
-        expect(session.getUrl()).equals(url);
+        expect(session.getConfirmedMessage()).equals(`${overrideConfirmMessageBase}${templateUrl}`);
+        expect(session.getWaitlistMessage()).equals(sessionWaitlistMessage);
+        expect(session.getCancelledMessage()).equals(overrideCancelMessage);
     });
 
     it('can update parameters', async () => {
         const {mockSessionParameters, mockMessage} = mocks;
+
+        await resetSession({sessionConfirmMessage: "CONFIRM %URL%"});
 
         const NAME = "NEW NAME";
         await session.setName(NAME);
         expect(session.getName()).to.equal(NAME);
 
         const URL = "NEW URL";
-        session.setUrl(URL);
-        expect(session.getUrl()).to.equal(URL);
+        session.setTemplateUrl(URL);
+        expect(session.getConfirmedMessage()).equals(`CONFIRM ${URL}`);
 
         const DESCRIPTION = "NEW DESCRIPTION";
         await session.setDescription(DESCRIPTION);
@@ -84,11 +91,12 @@ describe("Basic Session Checks", () => {
         mockMessage.received(0).edit(Arg.all());
     });
 
-    it('performs a string replacement', () => {
-        session.setUrl('https://fakedomain.fake/?session=%HRI%');
+    it('performs a string replacement', async () => {
+        await resetSession({sessionConfirmMessage: "%URL%"})
+        session.setTemplateUrl('https://fakedomain.fake/?session=%HRI%');
 
-        assert(session.getUrl().startsWith('https://fakedomain.fake/?session='));
-        expect(session.getUrl().indexOf('%HRI%')).equals(-1);
+        assert(session.getConfirmedMessage().startsWith('https://fakedomain.fake/?session='));
+        expect(session.getConfirmedMessage().indexOf('%HRI%')).equals(-1);
     });
 });
 
