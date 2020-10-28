@@ -1,6 +1,7 @@
 import Command from "./models/Command";
 import Context from "./models/Context";
 import { parseDate } from "../Utils";
+import Session from "../models/Session";
 
 export default class EditSessionCommand implements Command {
     static readonly singleton = new EditSessionCommand();
@@ -43,7 +44,7 @@ export default class EditSessionCommand implements Command {
                 session.setDescription(value);
                 break;
             case 'date':
-                session.setDate(parseDate(context.parameters));
+                this.updateDate(context, session);
                 break;
             case 'fire':
             case 'full':
@@ -67,5 +68,13 @@ export default class EditSessionCommand implements Command {
 
     usageExample(invocation: string): string {
         return `${invocation} d This is my new decription`;
+    }
+
+    private updateDate(context: Context, session: Session) {
+        const date = parseDate(context.parameters);
+        if (!date) {
+            throw new Error("I couldn't parse your date, I accept `mm dd hh:mm` (like 9 28 18:30 for Sept 18 at 6:30pm) or just `hh:mm` to use the current date");
+        }
+        session.setDate(date);
     }
 }

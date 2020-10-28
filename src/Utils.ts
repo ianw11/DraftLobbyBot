@@ -23,6 +23,7 @@ export function parseDate(parameters: string[]): Date | undefined {
             date = new Date();
             date.setHours(parseInt(split[0]));
             date.setMinutes(parseInt(split[1]));
+            date.setSeconds(0);
         } else {
             // This expects a perfectly formatted string
             date = new Date(singleParameter);
@@ -68,7 +69,7 @@ export function replaceFromDict(inputStr: string, delimiter: string, dict: Recor
     return inputStr.split(delimiter).reduce(reducer, '');
 }
 
-export function curryReplaceFromDict(delimiter: string) {
+export function curryReplaceFromDictWithDelimiter(delimiter: string) {
     return (inputStr: string, dict: Record<string, string>): string => replaceFromDict(inputStr, delimiter, dict);
 }
 

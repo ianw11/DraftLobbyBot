@@ -7,11 +7,12 @@ import DraftUser from './models/DraftUser';
 import Context, { ContextProps } from './commands/models/Context';
 
 //
-// To set your Discord Bot Token, take a look at ../env.ts for an explanation (hint: make an env.json)
+// To set your Discord Bot Token, take a look at ./env/env.ts for an explanation (hint: make an env.json)
 //
 
 // Join Link: https://discord.com/api/oauth2/authorize?client_id={YOUR_CLIENT_ID}&scope=bot&permissions=133200
 
+// TODO: This needs to be moved to a persistence layer
 const SERVERS: {[guildId: string]: DraftServer} = {};
 
 ///////////////////////////////////////////

@@ -1,4 +1,4 @@
-import {removeFromArray, parseDate, asyncForEach, curryReplaceFromDict, fillPodsFirst, evenlySplitPods} from '../src/Utils';
+import {removeFromArray, parseDate, asyncForEach, curryReplaceFromDictWithDelimiter, fillPodsFirst, evenlySplitPods} from '../src/Utils';
 import { expect } from 'chai';
 
 describe('test removeFromArray', () => {
@@ -82,7 +82,7 @@ describe('test parsing date', () => {
 });
 
 describe('test replaceFromDict', () => {
-    const curriedReplaceFromDict = curryReplaceFromDict("%");
+    const curriedReplaceFromDict = curryReplaceFromDictWithDelimiter("%");
     const dict = {YES: "yes"};
 
     it('replaces from dict', () => {
