@@ -9,3 +9,5 @@ node_modules
 # This should be unique per user (see env.ts for more information)
 env.json
 SessionTemplates.json
+
+data/lowdb_database.json
