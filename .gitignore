@@ -10,4 +10,5 @@ node_modules
 env.json
 SessionTemplates.json
 
-data/lowdb_database.json
+data/*
+!data/.includeme
