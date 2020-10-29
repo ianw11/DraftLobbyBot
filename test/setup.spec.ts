@@ -119,6 +119,21 @@ function* uniqueUserGenerator(userId?: DraftUserId, name?: string): Generator<Su
         draftUser.getUserId().returns(userId ? userId : `ID_BULK_USER_${id}`);
         draftUser.getDisplayName().returns(name ? name : `BULK_USER_${id}`);
 
+        // COULD BE PASS THROUGH BUT...
+
+        const joinedSessionIds = [];
+        draftUser.joinedSessions.returns(joinedSessionIds);
+        const waitlistedSessionIds = [];
+        draftUser.waitlistedSessions.returns(waitlistedSessionIds);
+
+        let createdSessionId;
+        draftUser.setCreatedSessionId(Arg.any()).mimicks((id) => createdSessionId = id);
+        draftUser.getCreatedSessionId().mimicks(() => createdSessionId);
+
+        // PASS THROUGH METHODS
+
+        draftUser.addedToSession(Arg.any()).mimicks(draftUser.addedToSession);
+
         ++id;
         yield draftUser;
     }

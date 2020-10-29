@@ -13,7 +13,7 @@ export default class DraftUser {
     waitlistedSessions: SessionId[] = [];
 
     // Remains null except for when there's an active Session
-    private createdSessionId: SessionId | null = null;
+    private createdSessionId?: SessionId = undefined;
 
     // Computed then cached for use in sendDM
     private dmChannel: DMChannel | null = null;
@@ -37,10 +37,10 @@ export default class DraftUser {
         return this.getDiscordUser()?.username || "<UNABLE TO GET USERNAME FROM DISCORD>";
     }
 
-    setCreatedSessionId(createdSessionId: SessionId | null): void {
+    setCreatedSessionId(createdSessionId?: SessionId): void {
         this.createdSessionId = createdSessionId;
     }
-    getCreatedSessionId(): SessionId | null {
+    getCreatedSessionId(): SessionId | undefined {
         return this.createdSessionId;
     }
 

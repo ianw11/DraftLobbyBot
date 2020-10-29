@@ -1,3 +1,4 @@
+
 import Command from "./models/Command";
 import Context from "./models/Context";
 
@@ -16,7 +17,7 @@ export default class DebugCommand implements Command {
             return;
         }
 
-        session.broadcast(context.parameters.join(' '));
+        // session.broadcast(context.parameters.join(' '));
     }
 }
 

@@ -81,7 +81,7 @@ export default class DraftServer {
             }
         }
         
-        draftUser.setCreatedSessionId(null);
+        draftUser.setCreatedSessionId(undefined);
     }
 
     ////////////////////////
