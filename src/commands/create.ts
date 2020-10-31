@@ -1,8 +1,8 @@
 import Command from './models/Command';
 import Context from './models/Context';
 import SessionTemplateCache from '../models/SessionTemplateCache';
-import { SessionParameters } from '../models/Session';
 import { parseDate } from '../Utils';
+import { SessionParametersWithSugar } from '../database/SessionDBSchema';
 
 
 export default class CreateCommand implements Command {
@@ -12,7 +12,7 @@ export default class CreateCommand implements Command {
         await context.draftServer.createSession(context.draftUser, this.findTemplate(context));
     }
 
-    private findTemplate(context: Context): Partial<SessionParameters> | undefined {
+    private findTemplate(context: Context): Partial<SessionParametersWithSugar> | undefined {
         if (context.parameters.length === 0) {
             return;
         }

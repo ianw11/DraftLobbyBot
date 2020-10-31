@@ -12,7 +12,7 @@ export default class DebugCommand implements Command {
         if (!sessionId) {
             return;
         }
-        const session = context.sessionResolver.resolve(sessionId);
+        const session = context.dataResolver.resolveSession(sessionId);
         if (!session) {
             return;
         }

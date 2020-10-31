@@ -1,4 +1,5 @@
 import {assert, expect} from 'chai';
+import IUserPersistentData from '../../src/database/UserDBSchema';
 import DraftUser from '../../src/models/DraftUser';
 import setup, { MocksInterface, MocksConstants, mockConstants } from '../setup.spec';
 
@@ -14,10 +15,12 @@ let mocks: MocksInterface;
 
 // The user we're testing in this file - reset every test
 let user: DraftUser;
+let userData: IUserPersistentData;
 
 beforeEach(() => {
     mocks = setup();
-    user = new DraftUser(constants.DISCORD_USER_ID, mocks.discordUserResolver, mocks.sessionResolver);
+    userData = mocks.mockUserPersistentData;
+    user = new DraftUser(userData, mocks.discordUserResolver, mocks.sessionResolver);
 });
 afterEach(() => {
     // None for now...
@@ -45,8 +48,8 @@ describe('session lifecycle', () => {
         await user.addedToSession(mockSession);
 
         assert(mockDmChannel.received(1).send(`You're confirmed for ${mockSessionParameters.name}`));
-        assert(user.joinedSessions.includes(mockSession.sessionId));
-        assert(user.joinedSessions.length === 1);
+        expect(userData.joinedSessionIds).contains(mockSession.sessionId);
+        expect(userData.joinedSessionIds.length).eq(1);
     });
 
     it('can get removed from a session', async () => {
@@ -56,7 +59,7 @@ describe('session lifecycle', () => {
         await user.removedFromSession(mockSession);
 
         assert(mockDmChannel.received(1).send(`You've been removed from ${mockSessionParameters.name}`));
-        assert(user.joinedSessions.length === 0);
+        expect(userData.joinedSessionIds.length).eq(0);
     });
 
     it('can get waitlisted', async () => {
@@ -64,8 +67,8 @@ describe('session lifecycle', () => {
         await user.addedToWaitlist(mockSession);
 
         assert(mockDmChannel.received(1).send(`You've been waitlisted for ${mockSessionParameters.name}.  You're in position: ${constants.NUM_IN_WAITLIST}`));
-        assert(user.waitlistedSessions.includes(mockSession.sessionId));
-        assert(user.waitlistedSessions.length === 1);
+        expect(userData.waitlistedSessionIds).contains(mockSession.sessionId);
+        expect(userData.waitlistedSessionIds.length).eq(1);
     });
 
     it('can get removed from the waitlist', async () => {
@@ -75,8 +78,8 @@ describe('session lifecycle', () => {
         await user.removedFromWaitlist(mockSession);
 
         assert(mockDmChannel.received(1).send(`You've been removed from the waitlist for ${mockSessionParameters.name}`));
-        assert(user.waitlistedSessions.length === 0);
-        assert(user.joinedSessions.length === 0);
+        expect(userData.waitlistedSessionIds.length).eq(0);
+        expect(userData.joinedSessionIds.length).eq(0);
     });
 
     it('can get upgraded from the waitlist', async () => {
@@ -86,9 +89,9 @@ describe('session lifecycle', () => {
         await user.upgradedFromWaitlist(mockSession);
 
         assert(mockDmChannel.received(1).send(`You've been upgraded from the waitlist for ${mockSessionParameters.name}`));
-        assert(user.waitlistedSessions.length === 0);
-        assert(user.joinedSessions.length === 1);
-        assert(user.joinedSessions.includes(mockSession.sessionId));
+        expect(userData.waitlistedSessionIds.length).eq(0);
+        expect(userData.joinedSessionIds.length).eq(1);
+        expect(userData.joinedSessionIds).contains(mockSession.sessionId);
     });
 
     it('can get cancelled on after join', async () => {
@@ -98,8 +101,8 @@ describe('session lifecycle', () => {
         await user.sessionClosed(mockSession, false);
 
         assert(mockDmChannel.received(1).send(mockSessionParameters.sessionCancelMessage));
-        assert(user.waitlistedSessions.length === 0);
-        assert(user.joinedSessions.length === 0);
+        expect(userData.waitlistedSessionIds.length).eq(0);
+        expect(userData.joinedSessionIds.length).eq(0);
     });
 
     it('can get cancelled on after waitlist', async () => {
@@ -109,8 +112,8 @@ describe('session lifecycle', () => {
         await user.sessionClosed(mockSession, false);
 
         assert(mockDmChannel.received(1).send(mockSessionParameters.sessionCancelMessage));
-        assert(user.waitlistedSessions.length === 0);
-        assert(user.joinedSessions.length === 0);
+        expect(userData.waitlistedSessionIds.length).eq(0);
+        expect(userData.joinedSessionIds.length).eq(0);
     });
 
     it('can start because successfully joined', async () => {
@@ -120,8 +123,8 @@ describe('session lifecycle', () => {
         await user.sessionClosed(mockSession, true);
 
         assert(mockDmChannel.received(1).send(mockSessionParameters.sessionConfirmMessage));
-        assert(user.waitlistedSessions.length === 0);
-        assert(user.joinedSessions.length === 0);
+        expect(userData.waitlistedSessionIds.length).eq(0)
+        expect(userData.joinedSessionIds.length).eq(0);
     });
 
     it('missed the start because on waitlist', async () => {
@@ -131,8 +134,8 @@ describe('session lifecycle', () => {
         await user.sessionClosed(mockSession, true);
 
         assert(mockDmChannel.received(1).send(mockSessionParameters.sessionWaitlistMessage));
-        assert(user.waitlistedSessions.length === 0);
-        assert(user.joinedSessions.length === 0);
+        expect(userData.waitlistedSessionIds.length).eq(0)
+        expect(userData.joinedSessionIds.length).eq(0);
     });
 });
 

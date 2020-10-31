@@ -1,36 +1,31 @@
-import { DraftUserId, SessionResolver, DiscordUserResolver } from "./types/DraftServerTypes";
-import Session, {SessionId} from "./Session";
+import { DiscordResolver, DataResolver } from "./types/ResolverTypes";
+import Session from "./Session";
 import { User, DMChannel, MessageEmbed } from "discord.js";
-import {removeFromArray} from "../Utils";
+import { IUserView } from "../database/UserDBSchema";
+import { DraftUserId, SessionId } from "./types/BaseTypes";
 
 export default class DraftUser {
-    private readonly userId: DraftUserId;
-    private readonly discordUserResolver: DiscordUserResolver;
-
-    private sessionResolver: SessionResolver;
-    // Public for unit testing purposes
-    joinedSessions: SessionId[] = [];
-    waitlistedSessions: SessionId[] = [];
-
-    // Remains null except for when there's an active Session
-    private createdSessionId?: SessionId = undefined;
+    private readonly data: IUserView;
+    
+    private readonly discordResolver: DiscordResolver;
+    private readonly dataResolver: DataResolver;
 
     // Computed then cached for use in sendDM
-    private dmChannel: DMChannel | null = null;
+    private dmChannel?: DMChannel = undefined;
 
-    constructor(userId: DraftUserId, discordUserResolver: DiscordUserResolver, sessionResolver: SessionResolver) {
-        this.userId = userId;
-        this.discordUserResolver = discordUserResolver;
+    constructor(data: IUserView, discordResolver: DiscordResolver, dataResolver: DataResolver) {
+        this.data = data;
 
-        this.sessionResolver = sessionResolver;
+        this.discordResolver = discordResolver;
+        this.dataResolver = dataResolver;
     }
 
     private getDiscordUser(): User | undefined {
-        return this.discordUserResolver.resolve(this.userId);
+        return this.discordResolver.resolveUser(this.data.userId);
     }
 
     getUserId(): DraftUserId {
-        return this.userId;
+        return this.data.userId;
     }
 
     getDisplayName(): string {
@@ -38,45 +33,39 @@ export default class DraftUser {
     }
 
     setCreatedSessionId(createdSessionId?: SessionId): void {
-        this.createdSessionId = createdSessionId;
+        this.data.createdSessionId = createdSessionId;
     }
     getCreatedSessionId(): SessionId | undefined {
-        return this.createdSessionId;
-    }
-
-    setSessionResolver(sessionResolver: SessionResolver): void {
-        this.sessionResolver = sessionResolver;
+        return this.data.createdSessionId;
     }
 
     async addedToSession(session: Session): Promise<void> {
-        this.joinedSessions.push(session.sessionId);
+        this.data.addedToSession(session.sessionId);
         await this.sendDM(`You're confirmed for ${session.getName()}`);
     }
 
     async removedFromSession(session: Session): Promise<void> {
-        removeFromArray(session.sessionId, this.joinedSessions);
+        this.data.removedFromSession(session.sessionId);
         await this.sendDM(`You've been removed from ${session.getName()}`);
     }
 
     async upgradedFromWaitlist(session: Session): Promise<void> {
-        removeFromArray(session.sessionId, this.waitlistedSessions);
-        this.joinedSessions.push(session.sessionId);
+        this.data.upgradedFromWaitlist(session.sessionId);
         await this.sendDM(`You've been upgraded from the waitlist for ${session.getName()}`);
     }
 
     async addedToWaitlist(session: Session): Promise<void> {
-        this.waitlistedSessions.push(session.sessionId);
+        this.data.addedToWaitlist(session.sessionId);
         await this.sendDM(`You've been waitlisted for ${session.getName()}.  You're in position: ${session.getNumWaitlisted()}`);
     }
 
     async removedFromWaitlist(session: Session): Promise<void> {
-        removeFromArray(session.sessionId, this.waitlistedSessions);
+        this.data.removedFromWaitlist(session.sessionId)
         await this.sendDM(`You've been removed from the waitlist for ${session.getName()}`);
     }
 
     async sessionClosed(session: Session, startedNormally = true): Promise<void> {
-        removeFromArray(session.sessionId, this.joinedSessions);
-        const waitlisted = removeFromArray(session.sessionId, this.waitlistedSessions);
+        const waitlisted = this.data.sessionClosed(session.sessionId);
 
         if (startedNormally) {
             if (waitlisted) {
@@ -94,7 +83,7 @@ export default class DraftUser {
 
         const callback = (includePlace: boolean) => {
             return (sessionId: SessionId) => {
-                const session = this.sessionResolver.resolve(sessionId);
+                const session = this.dataResolver.resolveSession(sessionId);
 
                 msg += `- ${session.toSimpleString()}`;
                 if (includePlace) {
@@ -105,21 +94,21 @@ export default class DraftUser {
             }
         };
 
-        this.joinedSessions.forEach(callback(false));
-        if (this.waitlistedSessions.length > 0) {
+        this.data.joinedSessionIds.forEach(callback(false));
+        if (this.data.waitlistedSessionIds.length > 0) {
             msg += "**Sessions you are waitlisted for:**\n";
-            this.waitlistedSessions.forEach(callback(true));
+            this.data.waitlistedSessionIds.forEach(callback(true));
         }
 
         await this.sendDM(msg);
     }
 
     async printOwnedSessionInfo(): Promise<void> {
-        if (!this.createdSessionId) {
+        if (!this.data.createdSessionId) {
             await this.sendDM("Cannot send info - you haven't created a session");
             return;
         }
-        const session = this.sessionResolver.resolve(this.createdSessionId);
+        const session = this.dataResolver.resolveSession(this.data.createdSessionId);
 
         await this.sendEmbedDM(session.getEmbed(true));
     }

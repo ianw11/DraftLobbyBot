@@ -43,7 +43,7 @@ interface EnvSessionOptions {
 // DEFAULT VALUES //
 ////////////////////
 
-const DefaultShallowEnvDefaults = {
+const DefaultShallowEnvDefaults/*: ShallowEnv */ = {
     /* NO DISCORD_BOT_TOKEN - SEE ENV.TS FOR INFORMATION */
 
     PREFIX: "!",

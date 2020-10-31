@@ -1,57 +1,23 @@
-import {SessionParameters, SessionId, SessionConstructorParameter, TemplateSessionParameters} from './types/SessionTypes';
-import {ENV, buildDefaultSessionParameters} from '../env/env';
-import { Message, MessageEmbed, EmbedFieldData, TextChannel } from "discord.js";
+import {ENV} from '../env/env';
+import { MessageEmbed, EmbedFieldData } from "discord.js";
 import DraftUser from "./DraftUser";
-import { removeFromArray, replaceFromDict, asyncForEach } from "../Utils";
-import { UserResolver, DraftUserId } from "./types/DraftServerTypes";
+import { replaceFromDict, asyncForEach } from "../Utils";
+import { DataResolver } from "./types/ResolverTypes";
+import { ISessionView } from '../database/SessionDBSchema';
+import { DraftUserId, SessionId } from './types/BaseTypes';
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const hri = require("human-readable-ids").hri; // JS Library
 
-export {
-    SessionId,
-    TemplateSessionParameters,
-    SessionParameters,
-    SessionConstructorParameter
-};
-
 export default class Session {
-    // Maintained only so the owner can't leave the draft instead of deleting it
-    private readonly ownerId?: DraftUserId;
-
-    private message?: Message;
-    private _sessionId?: SessionId;
     private readonly env: ENV;
+    private readonly dataResolver: DataResolver;
+    private readonly data: ISessionView;
 
-    private readonly userResolver: UserResolver;
-
-    private readonly joinedPlayers: DraftUserId[] = [];
-    private readonly waitlistedPlayers: DraftUserId[] = [];
-
-    private readonly params: SessionParameters;
-    private sessionClosed = false;
-
-    constructor (userResolver: UserResolver, env: ENV, params?: SessionConstructorParameter) {
+    constructor (dataResolver: DataResolver, env: ENV, data: ISessionView) {
         this.env = env;
-
-        this.userResolver = userResolver;
-
-        if (params) {
-            this.ownerId = params.ownerId;
-        }
-
-        this.params = {
-            ...buildDefaultSessionParameters(this.env),
-            ...(params || {})
-        };
-    }
-
-    async resetMessage(channel: TextChannel): Promise<[SessionId, Message]> {
-        this.message = await channel.send(this.getEmbed());
-
-        this._sessionId = this.message.id;
-
-        return [this._sessionId, this.message];
+        this.dataResolver = dataResolver;
+        this.data = data;
     }
 
     /////////////////////////
@@ -59,10 +25,10 @@ export default class Session {
     /////////////////////////
 
     get sessionId(): SessionId {
-        if (!this._sessionId) {
-            throw new Error("Session requires Message reset");
+        if (!this.data.sessionId) {
+            throw new Error("Session doesn't have session id");
         }
-        return this._sessionId;
+        return this.data.sessionId;
     }
     set sessionId(sessionId: SessionId) {
         throw new Error("Session Id can only be set via resetMessage()");
@@ -73,45 +39,45 @@ export default class Session {
     // for getter methods to be easily mocked.
 
     getNumConfirmed(): number {
-        return this.joinedPlayers.length;
+        return this.data.joinedPlayerIds.length;
     }
     getNumWaitlisted(): number {
-        return this.waitlistedPlayers.length;
+        return this.data.waitlistedPlayerIds.length;
     }
     
     getWaitlistIndexOf(draftUserId: DraftUserId): number {
-        return this.waitlistedPlayers.indexOf(draftUserId);
+        return this.data.waitlistedPlayerIds.indexOf(draftUserId);
     }
 
     async setName(name: string): Promise<void> {
-        this.params.name = name;
-        this.params._generatedName = undefined;
+        this.data.sessionParameters.name = name;
+        this.data.sessionParameters._generatedName = undefined;
         await this.updateMessage();
     }
     getName(): string {
-        if (!this.params._generatedName) {
-            if (this.ownerId && this.params.name) {
-                const name = this.userResolver.resolve(this.ownerId).getDisplayName();
-                this.params._generatedName = replaceFromDict(this.params.name, "%", {
+        if (!this.data.sessionParameters._generatedName) {
+            if (this.data.ownerId && this.data.sessionParameters.name) {
+                const name = this.dataResolver.resolveUser(this.data.ownerId).getDisplayName();
+                this.data.sessionParameters._generatedName = replaceFromDict(this.data.sessionParameters.name, "%", {
                     USER: name,
                     NAME: name
                 });
             } else {
-                this.params._generatedName = this.params.unownedSessionName;
+                this.data.sessionParameters._generatedName = this.data.sessionParameters.unownedSessionName;
             }
         }
-        return this.params._generatedName;
+        return this.data.sessionParameters._generatedName;
     }
 
     setTemplateUrl(templateUrl?: string): void {
-        this.params.templateUrl = templateUrl || "<NO URL>";
+        this.data.sessionParameters.templateUrl = templateUrl || "<NO URL>";
     }
 
     private getUrl(regenerate = false): string {
-        if (regenerate || !this.params._generatedUrl) {
-            this.params._generatedUrl = replaceFromDict(this.params.templateUrl, '%', {HRI: hri.random()});
+        if (regenerate || !this.data.sessionParameters._generatedUrl) {
+            this.data.sessionParameters._generatedUrl = replaceFromDict(this.data.sessionParameters.templateUrl, '%', {HRI: hri.random()});
         }
-        return this.params._generatedUrl;
+        return this.data.sessionParameters._generatedUrl;
     }
 
     async setSessionCapacity(sessionCapacity: number): Promise<void> {
@@ -122,36 +88,36 @@ export default class Session {
             throw new Error(`There are ${this.getNumConfirmed()} people already confirmed - some of them will need to leave before I can lower to ${sessionCapacity}`);
         }
 
-        this.params.sessionCapacity = sessionCapacity;
+        this.data.sessionParameters.sessionCapacity = sessionCapacity;
         await this.upgradePlayer();
         await this.fireIfAble();
     }
     getSessionCapacity(): number {
-        return this.params.sessionCapacity;
+        return this.data.sessionParameters.sessionCapacity;
     }
 
     async setDescription(description: string): Promise<void> {
-        this.params.description = description;
+        this.data.sessionParameters.description = description;
         await this.updateMessage();
     }
     getDescription(): string {
-        return this.params.description;
+        return this.data.sessionParameters.description;
     }
 
     async setDate(date?: Date): Promise<void> {
-        this.params.date = date;
+        this.data.sessionParameters.date = date;
         await this.updateMessage();
     }
     getDate(): Date | undefined {
-        return this.params.date;
+        return this.data.sessionParameters.date;
     }
 
     async setFireWhenFull(fire: boolean): Promise<void> {
-        this.params.fireWhenFull = fire;
+        this.data.sessionParameters.fireWhenFull = fire;
         await this.updateMessage();
     }
     getFireWhenFull(): boolean {
-        return this.params.fireWhenFull;
+        return this.data.sessionParameters.fireWhenFull;
     }
 
 
@@ -160,25 +126,25 @@ export default class Session {
     ///////////////////////////////////
 
     canAddPlayers() : boolean {
-        return !this.sessionClosed && this.getNumConfirmed() < this.params.sessionCapacity;
+        return !this.data.sessionClosed && this.getNumConfirmed() < this.data.sessionParameters.sessionCapacity;
     }
 
     async addPlayer(draftUser: DraftUser): Promise<void> {
-        if (this.sessionClosed) {
+        if (this.data.sessionClosed) {
             throw new Error("Can't join session - already closed");
         }
 
         const userId = draftUser.getUserId();
 
-        if (this.joinedPlayers.indexOf(userId) !== -1 || this.waitlistedPlayers.indexOf(userId) !== -1) {
+        if (this.data.joinedPlayerIds.indexOf(userId) !== -1 || this.data.waitlistedPlayerIds.indexOf(userId) !== -1) {
             throw new Error("User already joined");
         }
 
         if (this.canAddPlayers()) {
-            this.joinedPlayers.push(userId);
+            this.data.addToConfirmed(userId);
             draftUser.addedToSession(this);
         } else {
-            this.waitlistedPlayers.push(userId);
+            this.data.addToWaitlist(userId);
             draftUser.addedToWaitlist(this);
         }
 
@@ -189,18 +155,18 @@ export default class Session {
     async removePlayer(draftUser: DraftUser): Promise<void> {
         const userId = draftUser.getUserId();
 
-        if (userId === this.ownerId) {
+        if (userId === this.data.ownerId) {
             throw new Error("Owner trying to leave - use `$delete` to delete session");
         }
 
-        const joinedIndex = this.joinedPlayers.indexOf(userId);
+        const joinedIndex = this.data.joinedPlayerIds.indexOf(userId);
         if (joinedIndex !== -1) {
-            removeFromArray(userId, this.joinedPlayers);
+            this.data.removeFromConfirmed(userId);
             draftUser.removedFromSession(this);
         } else {
-            const waitlistIndex = this.waitlistedPlayers.indexOf(userId);
+            const waitlistIndex = this.data.waitlistedPlayerIds.indexOf(userId);
             if (waitlistIndex !== -1) {
-                removeFromArray(userId, this.waitlistedPlayers);
+                this.data.removeFromWaitlist(userId);
                 draftUser.removedFromWaitlist(this);
             }
         }
@@ -211,17 +177,22 @@ export default class Session {
 
     private async upgradePlayer() {
         let upgradedPlayerId;
-        while (this.canAddPlayers() && (upgradedPlayerId = this.waitlistedPlayers.shift())) {
-            const upgradedPlayer = this.userResolver.resolve(upgradedPlayerId);
-            this.joinedPlayers.push(upgradedPlayerId);
+
+        const waitlist = this.data.waitlistedPlayerIds;
+        const confirmed = this.data.joinedPlayerIds;
+        while (this.canAddPlayers() && (upgradedPlayerId = waitlist.shift())) {
+            const upgradedPlayer = this.dataResolver.resolveUser(upgradedPlayerId);
+            confirmed.push(upgradedPlayerId);
             await upgradedPlayer.upgradedFromWaitlist(this);
         }
+        this.data.waitlistedPlayerIds = waitlist;
+        this.data.joinedPlayerIds = confirmed;
         await this.updateMessage();
     }
 
 
     private async fireIfAble() {
-        if (!this.params.fireWhenFull || this.canAddPlayers()) {
+        if (!this.data.sessionParameters.fireWhenFull || this.canAddPlayers()) {
             return;
         }
 
@@ -229,9 +200,9 @@ export default class Session {
     }
     
     async terminate(started = false): Promise<void> {
-        this.sessionClosed = true;
+        this.data.sessionClosed = true;
 
-        // If the session started noramally, pod the users
+        // If the session started normally, pod the users
         /*
         await asyncForEach(fillPodsFirst(this.joinedPlayers.length, 8, true), async (count) => {
             const url = this.getUrl(true);
@@ -249,19 +220,21 @@ export default class Session {
         */
 
         // Notify both joined and waitlisted that this Session is closed
-        const callback = async (draftUserId: DraftUserId) => await this.userResolver.resolve(draftUserId).sessionClosed(this, started);
-        await asyncForEach(this.joinedPlayers, callback);
-        await asyncForEach(this.waitlistedPlayers, callback);
+        const callback = async (draftUserId: DraftUserId) => await this.dataResolver.resolveUser(draftUserId).sessionClosed(this, started);
+        await asyncForEach(this.data.joinedPlayerIds, callback);
+        await asyncForEach(this.data.waitlistedPlayerIds, callback);
 
+        const message = this.dataResolver.discordResolver.resolveMessageInAnnouncementChannel(this.sessionId);
         // Clean up the announcement channel a bit
-        if (this.message) {
-            await this.message.delete();
+        if (message) {
+            await message.delete();
         }
     }
 
     private async updateMessage() {
-        if (this.message) {
-            await this.message.edit('', this.getEmbed());
+        const message = this.dataResolver.discordResolver.resolveMessageInAnnouncementChannel(this.sessionId);
+        if (message) {
+            await message.edit('', this.getEmbed());
         }
     }
 
@@ -270,15 +243,15 @@ export default class Session {
     ///////////////////////////////
 
     getConfirmedMessage(overrides?: Record<string, string>): string {
-        return this.replaceMessage(this.params.sessionConfirmMessage, overrides);
+        return this.replaceMessage(this.data.sessionParameters.sessionConfirmMessage, overrides);
     }
 
     getWaitlistMessage(): string {
-        return this.replaceMessage(this.params.sessionWaitlistMessage);
+        return this.replaceMessage(this.data.sessionParameters.sessionWaitlistMessage);
     }
 
     getCancelledMessage(): string {
-        return this.replaceMessage(this.params.sessionCancelMessage);
+        return this.replaceMessage(this.data.sessionParameters.sessionCancelMessage);
     }
 
     private replaceMessage(msg: string, overrides = {}): string {
@@ -292,30 +265,32 @@ export default class Session {
     async broadcast(message: string, includeWaitlist = false): Promise<void> {
         const sessionName = this.getName();
         let intro = `EVENT ${sessionName}`;
-        if (this.ownerId) {
-            const owner = this.userResolver.resolve(this.ownerId);
+        if (this.data.ownerId) {
+            const owner = this.dataResolver.resolveUser(this.data.ownerId);
             intro = `${owner.getDisplayName()} (${sessionName})`
         }
         const callback = async (userId: DraftUserId) => {
-            if (userId === this.ownerId) {
+            if (userId === this.data.ownerId) {
                 return;
             }
-            await this.userResolver.resolve(userId).sendDM(`\`[BROADCAST] ${intro}\`\n${message}`);
+            await this.dataResolver.resolveUser(userId).sendDM(`\`[BROADCAST] ${intro}\`\n${message}`);
         };
 
-        await asyncForEach(this.joinedPlayers, callback);
+        await asyncForEach(this.data.joinedPlayerIds, callback);
         if (includeWaitlist) {
-            await asyncForEach(this.waitlistedPlayers, callback);
+            await asyncForEach(this.data.waitlistedPlayerIds, callback);
         }
     }
 
     toSimpleString(): string {
-        const {date, description} = this.params;
+        const {description} = this.data.sessionParameters;
+        const date = this.data.sessionParameters.date;
         return `**${this.getName()}** ${date ? `- starts at ${date.toString()} ` : ''} || ${description}`;
     }
 
     getEmbed(provideOwnerInformation?: boolean): MessageEmbed {
-        const {description, sessionCapacity, fireWhenFull, date} = this.params;
+        const {description, sessionCapacity, fireWhenFull} = this.data.sessionParameters;
+        const date = this.data.sessionParameters.date;
         const numJoined = this.getNumConfirmed();
         const numWaitlisted = this.getNumWaitlisted();
 
@@ -332,15 +307,16 @@ export default class Session {
         ];
 
         if (provideOwnerInformation) {
-            const reducer = (accumulator: string, current: DraftUserId) => `${accumulator}- ${this.userResolver.resolve(current).getDisplayName()}\n`;
+            const reducer = (accumulator: string, current: DraftUserId) => `${accumulator}- ${this.dataResolver.resolveUser(current).getDisplayName()}\n`;
             fields.push({
                 name: "Currently Joined",
-                value: this.joinedPlayers.reduce(reducer, '')
+                value: this.data.joinedPlayerIds.reduce(reducer, '')
             });
-            if (this.waitlistedPlayers.length > 0) {
+            const waitlist = this.data.waitlistedPlayerIds;
+            if (waitlist.length > 0) {
                 fields.push({
                     name: "Currently Waitlisted",
-                    value: this.waitlistedPlayers.reduce(reducer, '')
+                    value: waitlist.reduce(reducer, '')
                 });
             }
         } else {

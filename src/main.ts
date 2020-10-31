@@ -5,6 +5,9 @@ import DraftServer from './models/DraftServer';
 import Session from './models/Session';
 import DraftUser from './models/DraftUser';
 import Context, { ContextProps } from './commands/models/Context';
+import { DataResolver, DiscordResolver } from './models/types/ResolverTypes';
+import { LowdbDriver } from './database/lowdb/LowdbDriver';
+import { DBDriver } from './database/DBDriver';
 
 //
 // To set your Discord Bot Token, take a look at ./env/env.ts for an explanation (hint: make an env.json)
@@ -14,6 +17,15 @@ import Context, { ContextProps } from './commands/models/Context';
 
 // TODO: This needs to be moved to a persistence layer
 const SERVERS: {[guildId: string]: DraftServer} = {};
+const DB_DRIVER = new LowdbDriver();
+
+////////////////
+// DATA LAYER //
+////////////////
+
+function getDataResolver(guild: Guild, env: ENV, dbDriver: DBDriver): DataResolver {
+    return new DataResolver(new DiscordResolver(guild, env), dbDriver);
+}
 
 ///////////////////////////////////////////
 // Helper Methods for the Discord client //
@@ -24,16 +36,16 @@ async function outputError(e: Error, user: User | PartialUser, env: ENV) {
     await (await user.createDM()).send(env.ERROR_OUTPUT.replace("%s", e.message))
 }
 
-function getDraftServer(guild: Guild, env: ENV): DraftServer {
+function getDraftServer(guild: Guild, env: ENV, dbDriver: DBDriver): DraftServer {
     let server = SERVERS[guild.id];
     if (!server) {
-        server = new DraftServer(guild, env);
+        server = new DraftServer(env, getDataResolver(guild, env, dbDriver));
         SERVERS[guild.id] = server;
     }
     return server;
 }
 
-function getServerAndSession(reaction: MessageReaction, env: ENV): [DraftServer, Session|null] {
+function getServerAndSession(reaction: MessageReaction, env: ENV, dbDriver: DBDriver): [DraftServer, Session|null] {
     const {message} = reaction;
 
     const {guild} = message;
@@ -41,13 +53,13 @@ function getServerAndSession(reaction: MessageReaction, env: ENV): [DraftServer,
         throw new Error("Error with Discord - Guild not included in Message");
     }
 
-    const draftServer = getDraftServer(guild, env);
+    const draftServer = getDraftServer(guild, env, dbDriver);
     const session = draftServer.getSessionFromMessage(message);
 
     return session ? [draftServer, session] : [draftServer, null];
 }
 
-function onMessage(client: Client, env: ENV) {
+function onMessage(client: Client, env: ENV, dbDriver: DBDriver) {
     const {DEBUG, PREFIX, log} = env;
 
     return async (message: Message) => {
@@ -83,7 +95,7 @@ function onMessage(client: Client, env: ENV) {
                 if (!guild) {
                     throw new Error("Error with Discord.js - guild not included in message");
                 }
-                const draftServer = getDraftServer(guild, env);
+                const draftServer = getDraftServer(guild, env, dbDriver);
 
                 // Build the props for the Context
                 const props: ContextProps = {
@@ -110,15 +122,15 @@ function onMessage(client: Client, env: ENV) {
 
 type ReactionCallback = (p1: DraftUser, p2: Session) => Promise<void>;
 type CurriedReactionCallback = (r: MessageReaction, u: User | PartialUser) => Promise<void>;
-function onReaction(env: ENV, callback: ReactionCallback): CurriedReactionCallback {
+function onReaction(env: ENV, dbDriver: DBDriver, callback: ReactionCallback): CurriedReactionCallback {
     return async (reaction: MessageReaction, rawUser: User | PartialUser) => {
         if (rawUser.bot) return;
 
         try {
-            const [draftServer, session] = getServerAndSession(reaction, env);
+            const [draftServer, session] = getServerAndSession(reaction, env, dbDriver);
 
             if (session) {
-                const draftUser = draftServer.getDraftUser(rawUser);
+                const draftUser = draftServer.dataResolver.resolveUser(rawUser.id);
                 await callback(draftUser, session);
             }
         } catch (e) {
@@ -154,9 +166,9 @@ export default function main(env: ENV): void {
         env.log("Logged in successfully");
     });
 
-    client.on('message', onMessage(client, env));
-    client.on('messageReactionAdd', onReaction(env, async (draftUser, session) => await session.addPlayer(draftUser)));
-    client.on('messageReactionRemove', onReaction(env, async (draftUser, session) => await session.removePlayer(draftUser)));
+    client.on('message', onMessage(client, env, DB_DRIVER));
+    client.on('messageReactionAdd', onReaction(env, DB_DRIVER, async (draftUser, session) => await session.addPlayer(draftUser)));
+    client.on('messageReactionRemove', onReaction(env, DB_DRIVER, async (draftUser, session) => await session.removePlayer(draftUser)));
 
     if (DISCORD_BOT_TOKEN) {
         // Yes, this is THE login call

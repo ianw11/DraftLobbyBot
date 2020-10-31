@@ -1,10 +1,14 @@
 import Substitute, { SubstituteOf, Arg } from "@fluffy-spoon/substitute";
-import Session, {SessionId, SessionConstructorParameter} from "../src/models/Session";
-import DraftServer, {DraftUserId, UserResolver, SessionResolver, DiscordUserResolver} from "../src/models/DraftServer";
+import DraftServer from "../src/models/DraftServer";
 import { DMChannel, User, Message, Client, TextChannel } from "discord.js";
 import DraftUser from "../src/models/DraftUser";
 import ENV, {DEFAULTS} from "../src/env/EnvBase";
 import Context from "../src/commands/models/Context";
+import { InMemoryUserPersistentData, IUserView } from "../src/database/UserDBSchema";
+import { DataResolver, DiscordResolver } from "../src/models/types/DraftServerTypes";
+import { SessionConstructorParameter } from "../src/database/SessionDBSchema";
+import Session from "../src/models/Session";
+import { DraftUserId, SessionId } from "../src/models/types/BaseTypes";
 
 /*
 WARNING: THAR BE DRAGONS IN THIS FILE
@@ -46,10 +50,9 @@ export interface MocksInterface {
     mockConstants: MocksConstants,
     mockSessionParameters: SessionConstructorParameter,
     mockSession: SubstituteOf<Session>,
-    sessionResolver: SessionResolver,
+    mockUserView: IUserView,
     mockDraftUser: DraftUser,
-    userResolver: UserResolver,
-    discordUserResolver: DiscordUserResolver,
+    mockDataResolver: DataResolver,
     mockAnnouncementChannel: SubstituteOf<TextChannel>,
     mockDiscordUser: SubstituteOf<User>,
     mockDmChannel: SubstituteOf<DMChannel>,
@@ -119,20 +122,11 @@ function* uniqueUserGenerator(userId?: DraftUserId, name?: string): Generator<Su
         draftUser.getUserId().returns(userId ? userId : `ID_BULK_USER_${id}`);
         draftUser.getDisplayName().returns(name ? name : `BULK_USER_${id}`);
 
-        // COULD BE PASS THROUGH BUT...
-
-        const joinedSessionIds = [];
-        draftUser.joinedSessions.returns(joinedSessionIds);
-        const waitlistedSessionIds = [];
-        draftUser.waitlistedSessions.returns(waitlistedSessionIds);
+        // Apparently Substitute doesn't mock properties, so we must explicitly do that here
 
         let createdSessionId;
-        draftUser.setCreatedSessionId(Arg.any()).mimicks((id) => createdSessionId = id);
+        draftUser.setCreatedSessionId(Arg.any()).mimicks((newId) => createdSessionId = newId);
         draftUser.getCreatedSessionId().mimicks(() => createdSessionId);
-
-        // PASS THROUGH METHODS
-
-        draftUser.addedToSession(Arg.any()).mimicks(draftUser.addedToSession);
 
         ++id;
         yield draftUser;
@@ -167,6 +161,8 @@ export default function setup(): MocksInterface {
 
     const {SESSION_ID, NUM_CONFIRMED, NUM_IN_WAITLIST, DISCORD_USER_ID, USERNAME} = mockConstants;
 
+    const mockDataResolver = Substitute.for<DataResolver>();
+
     // Try to pre-fill this object as much as possible
     const mocks: MocksInterface = {
         // First export the convenience attributes
@@ -188,14 +184,12 @@ export default function setup(): MocksInterface {
         },
         mockSession: Substitute.for<Session>(),
 
+        mockUserView: new InMemoryUserPersistentData(DISCORD_USER_ID),
+
         // A simple mock to get started
         mockDraftUser: generateCustomUser(),
         // Set up the mock for Discord User object backing our DraftUser
         mockDiscordUser: buildMockDiscordUser(DISCORD_USER_ID, USERNAME),
-
-        // Resolve to the persisted maps (they are reset every test)
-        userResolver: {resolve: (userId: DraftUserId) => generatedUsers[userId] },
-        discordUserResolver: {resolve: (discordUserId: string) => generatedDiscordUsers[discordUserId] },
 
         mockAnnouncementChannel: Substitute.for<TextChannel>(),
 
@@ -205,7 +199,7 @@ export default function setup(): MocksInterface {
         // The message used to announce a draft
         mockMessage: Substitute.for<Message>(),
 
-        sessionResolver: {resolve: () => {throw new Error("NOT FULLY HOOKED UP")}} // Completed below
+        mockDataResolver: mockDataResolver
     };
 
     // With the main mocks done, hook up the overrides...
@@ -223,8 +217,14 @@ export default function setup(): MocksInterface {
     mockSession.getWaitlistMessage().returns(mockSessionParameters.sessionWaitlistMessage);
     mockSession.getCancelledMessage().returns(mockSessionParameters.sessionCancelMessage);
 
-    // Make the session available to the resolver and update the stub
-    mocks.sessionResolver = {resolve: (sessionId: SessionId) => sessionId === SESSION_ID ? mockSession : null };
+
+    mockDataResolver.env.returns(mockEnv);
+    mockDataResolver.resolveUser(Arg.any()).mimicks((userId: DraftUserId) => generatedUsers[userId]);
+    mockDataResolver.resolveSession(Arg.any()).mimicks((sessionId: SessionId) => sessionId === SESSION_ID ? mockSession : null);
+
+    const mockDiscordResolver = Substitute.for<DiscordResolver>();
+    mockDataResolver.discordResolver.returns(mockDiscordResolver);
+
     
     // Attach the output DM channel to the Discord User
     mocks.mockDiscordUser.createDM().resolves(mocks.mockDmChannel);

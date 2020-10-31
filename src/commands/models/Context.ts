@@ -1,7 +1,8 @@
 import { Client, User, Message } from "discord.js";
-import DraftServer, { UserResolver, SessionResolver } from "../../models/DraftServer";
+import DraftServer from "../../models/DraftServer";
 import ENV from "../../env/EnvBase";
 import DraftUser from "../../models/DraftUser";
+import { DataResolver } from "../../models/types/ResolverTypes";
 
 export interface ContextProps {
     env: ENV,
@@ -20,10 +21,7 @@ export default class Context {
     
     readonly message?: Message; // Likely only to be used for debug purposes
 
-    // Computed values
-    readonly draftUser: DraftUser;
-    readonly sessionResolver: SessionResolver;
-    readonly userResolver: UserResolver;
+    private readonly user: User;
 
     constructor(props: ContextProps) {
         const {env, client, draftServer, parameters, message, user} = props;
@@ -33,9 +31,15 @@ export default class Context {
         this.parameters = parameters;
 
         this.message = message;
-        
-        this.draftUser = this.draftServer.getDraftUser(user);
-        this.sessionResolver = draftServer.sessionResolver;
-        this.userResolver = draftServer.userResolver;
+
+        this.user = user;
+    }
+
+    get draftUser(): DraftUser {
+        return this.dataResolver.resolveUser(this.user.id);
+    }
+
+    get dataResolver(): DataResolver {
+        return this.draftServer.dataResolver;
     }
 }

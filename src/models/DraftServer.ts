@@ -1,42 +1,27 @@
 import ENV from '../env/EnvBase';
-import {DraftUserId, UserResolver, SessionResolver, DiscordUserResolver} from "./types/DraftServerTypes";
-import Session, {SessionId, SessionParameters} from "./Session";
+import {DataResolver} from "./types/ResolverTypes";
+import Session from "./Session";
 import DraftUser from "./DraftUser";
-import { User, Message, TextChannel, Guild, GuildChannel, PartialUser } from "discord.js";
-
-export {
-    DraftUserId,
-    UserResolver,
-    SessionResolver,
-    DiscordUserResolver
-};
+import { Message } from "discord.js";
+import { ISessionView, SessionParametersDB } from '../database/SessionDBSchema';
+import { SessionId } from './types/BaseTypes';
 
 export default class DraftServer {
-    private readonly guild: Guild;
+
     private readonly env: ENV;
-
-    private announcementChannel?: TextChannel;
-
-    private readonly sessions: Record<SessionId, Session|undefined> = {};
-    private readonly users: Record<DraftUserId, DraftUser> = {};
-
-    readonly userResolver: UserResolver = {resolve: (draftUserId: DraftUserId) => this.getDraftUserById(draftUserId)};
-    readonly sessionResolver: SessionResolver = {resolve: (sessionId: SessionId) => this.getSession(sessionId)};
-    readonly discordUserResolver: DiscordUserResolver = {resolve: (userId: string) => this.guild.member(userId)?.user }
-
-    constructor (guild: Guild, env: ENV) {
-        this.guild = guild;
+    readonly dataResolver: DataResolver;
+    
+    constructor (env: ENV, dataResolver: DataResolver) {
         this.env = env;
-
-        this.findOrCreateAnnouncementChannel();
+        this.dataResolver = dataResolver;
     }
 
     ////////////////////////////////
     // SESSION MANAGEMENT METHODS //
     ////////////////////////////////
 
-    async createSession(draftUser: DraftUser, parameters?: Partial<SessionParameters>): Promise<void> {
-        if (!this.announcementChannel) {
+    async createSession(draftUser: DraftUser, parameters?: Partial<SessionParametersDB>): Promise<void> {
+        if (!this.dataResolver.discordResolver.announcementChannel) {
             throw new Error("Cannot create a session - announcement channel was not set up.  Bot might require a restart");
         }
         // Close out any prior Sessions
@@ -44,12 +29,11 @@ export default class DraftServer {
             await this.closeSession(draftUser);
         }
 
-        // First build the actual Session object
-        const session = new Session(this.userResolver, this.env, {...(parameters||{}), ownerId: draftUser.getUserId()});
-        const [sessionId, message] = await session.resetMessage(this.announcementChannel);
-        
-        // Persist the Session object
-        this.sessions[sessionId] = session;
+        // Send a temporary message to get the id and build a Session with it
+        const message = await this.dataResolver.discordResolver.announcementChannel.send("Setting up session...");
+        const sessionId: SessionId = message.id;
+        const data: ISessionView = this.dataResolver.dbDriver.createSession(sessionId, this.env, parameters);
+        const session = new Session(this.dataResolver, this.env, data);
         
         // Add the creator to their Session
         draftUser.setCreatedSessionId(sessionId);
@@ -57,6 +41,10 @@ export default class DraftServer {
 
         // Update and react to indicate we're ready to go
         await message.react(this.env.EMOJI);
+    }
+
+    get serverId(): string {
+        return this.dataResolver.discordResolver.guild.id;
     }
 
     async startSession(draftUser: DraftUser): Promise<void> {
@@ -77,7 +65,7 @@ export default class DraftServer {
         if (session) {
             await session.terminate(started);
             if (session.sessionId) {
-                this.sessions[session.sessionId] = undefined;
+                this.dataResolver.dbDriver.deleteSessionFromDatabase(session.sessionId);
             }
         }
         
@@ -88,18 +76,21 @@ export default class DraftServer {
     // PUBLIC GET METHODS //
     ////////////////////////
 
-    get serverId(): string {
-        return this.guild.id;
-    }
-
     getSessionFromMessage(message: Message): Session | undefined {
-        if (!this.announcementChannel) {
+        // We want to verify that we can ONLY resolve messages from the announcement channel.
+        
+        // To do this, we first compare the message's channel's id to the id of the saved
+        // announcement channel.  However, to do so we need to have already hooked up to
+        // the announcement channel so this is still flaky.
+
+        if (!this.dataResolver.discordResolver.announcementChannel) {
             throw new Error("Bot was not properly set up with an announcement channel - probably requires a restart");
         }
-        if (message.channel.id !== this.announcementChannel.id) {
+        if (message.channel.id !== this.dataResolver.discordResolver.announcementChannel.id) {
             return;
         }
-        return this.getSession(message.id);
+
+        return this.dataResolver.resolveSession(message.id);
     }
 
     getSessionFromDraftUser(draftUser: DraftUser): Session | undefined {
@@ -107,61 +98,6 @@ export default class DraftServer {
         if (!sessionId) {
             return;
         }
-        return this.getSession(sessionId);
-    }
-
-    getSession(sessionId: SessionId): Session {
-        const session = this.sessions[sessionId];
-        if (session) {
-            return session;
-        }
-        throw new Error("Could not find Session for the provided SessionId");
-    }
-
-    getDraftUser(user: User | PartialUser): DraftUser {
-        let draftUser = this.getDraftUserById(user.id, false);
-        if (!draftUser) {
-            draftUser = new DraftUser(user.id, this.discordUserResolver, this.sessionResolver);
-            this.users[user.id] = draftUser;
-        }
-        return draftUser;
-    }
-
-    getDraftUserById(draftUserId: DraftUserId, shouldThrow = true): DraftUser {
-        const user = this.users[draftUserId];
-        if (user || !shouldThrow) {
-            return user;
-        }
-        throw new Error("Could not find DraftUser for the provided DraftUserId");
-    }
-
-    //////////////////////
-    // INTERNAL METHODS //
-    //////////////////////
-
-    private findOrCreateAnnouncementChannel() {
-        const {channels, name: guildName} = this.guild;
-        const {DRAFT_CHANNEL_NAME, log} = this.env;
-
-        channels.cache.each((channel: GuildChannel) => {
-            const {name: channelName, type} = channel;
-
-            if (type !== 'text') {
-                return;
-            }
-
-            if (channelName === DRAFT_CHANNEL_NAME) {
-                this.announcementChannel = channel as TextChannel;
-            }
-        });
-
-        if (this.announcementChannel) {
-            log(`${guildName} already has a channel`);
-        } else {
-            log(`Creating announcement channel for ${guildName}`);
-            this.guild.channels.create(DRAFT_CHANNEL_NAME).then((channel) => {
-                this.announcementChannel = channel
-            });
-        }
+        return this.dataResolver.resolveSession(sessionId);
     }
 }
