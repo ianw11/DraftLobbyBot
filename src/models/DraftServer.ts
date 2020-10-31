@@ -3,7 +3,7 @@ import {DataResolver} from "./types/ResolverTypes";
 import Session from "./Session";
 import DraftUser from "./DraftUser";
 import { Message } from "discord.js";
-import { ISessionView, SessionParametersDB } from '../database/SessionDBSchema';
+import { SessionInjectedParameters, SessionParametersWithSugar } from '../database/SessionDBSchema';
 import { SessionId } from './types/BaseTypes';
 
 export default class DraftServer {
@@ -20,7 +20,7 @@ export default class DraftServer {
     // SESSION MANAGEMENT METHODS //
     ////////////////////////////////
 
-    async createSession(draftUser: DraftUser, parameters?: Partial<SessionParametersDB>): Promise<void> {
+    async createSession(draftUser: DraftUser, parameters?: Partial<SessionParametersWithSugar>): Promise<void> {
         if (!this.dataResolver.discordResolver.announcementChannel) {
             throw new Error("Cannot create a session - announcement channel was not set up.  Bot might require a restart");
         }
@@ -32,8 +32,12 @@ export default class DraftServer {
         // Send a temporary message to get the id and build a Session with it
         const message = await this.dataResolver.discordResolver.announcementChannel.send("Setting up session...");
         const sessionId: SessionId = message.id;
-        const data: ISessionView = this.dataResolver.dbDriver.createSession(sessionId, this.env, parameters);
-        const session = new Session(this.dataResolver, this.env, data);
+
+        const injectedParameters: SessionInjectedParameters = {
+            ownerId: draftUser.getUserId()
+        }
+        this.dataResolver.dbDriver.createSession(sessionId, this.env, {...(parameters||{}), ...injectedParameters});
+        const session = this.dataResolver.resolveSession(sessionId);
         
         // Add the creator to their Session
         draftUser.setCreatedSessionId(sessionId);

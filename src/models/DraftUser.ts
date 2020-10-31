@@ -1,4 +1,4 @@
-import { DiscordResolver, DataResolver } from "./types/ResolverTypes";
+import { DataResolver } from "./types/ResolverTypes";
 import Session from "./Session";
 import { User, DMChannel, MessageEmbed } from "discord.js";
 import { IUserView } from "../database/UserDBSchema";
@@ -7,21 +7,19 @@ import { DraftUserId, SessionId } from "./types/BaseTypes";
 export default class DraftUser {
     private readonly data: IUserView;
     
-    private readonly discordResolver: DiscordResolver;
     private readonly dataResolver: DataResolver;
 
     // Computed then cached for use in sendDM
     private dmChannel?: DMChannel = undefined;
 
-    constructor(data: IUserView, discordResolver: DiscordResolver, dataResolver: DataResolver) {
+    constructor(data: IUserView, dataResolver: DataResolver) {
         this.data = data;
 
-        this.discordResolver = discordResolver;
         this.dataResolver = dataResolver;
     }
 
     private getDiscordUser(): User | undefined {
-        return this.discordResolver.resolveUser(this.data.userId);
+        return this.dataResolver.discordResolver.resolveUser(this.data.userId);
     }
 
     getUserId(): DraftUserId {

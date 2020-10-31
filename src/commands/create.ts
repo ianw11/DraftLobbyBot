@@ -14,6 +14,7 @@ export default class CreateCommand implements Command {
 
     private findTemplate(context: Context): Partial<SessionParametersWithSugar> | undefined {
         if (context.parameters.length === 0) {
+            // No template - use defaults
             return;
         }
 

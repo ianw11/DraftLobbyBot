@@ -20,19 +20,32 @@ export class DiscordResolver {
         return this.guild.members.resolve(userId)?.user;
     }
 
-    resolveMessageInAnnouncementChannel(messageId: string): Message | null {
+    async resolveMessageInAnnouncementChannel(messageId: string): Promise<Message | undefined> {
         if (!this.announcementChannel) {
             throw new Error("Text Channel not attached - unable to resolveMessage");
         }
-        return this.resolveMessage(this.announcementChannel.id, messageId);
+        return await this.resolveMessage(this.announcementChannel.id, messageId);
     }
 
-    resolveMessage(channelId: string, messageId: string): Message | null {
+    async resolveMessage(channelId: string, messageId: string): Promise<Message | undefined> {
         const channel = this.guild.channels.resolve(channelId);
         if (!channel || channel.type !== 'text') {
-            return null;
+            return undefined;
         }
-        return (channel as TextChannel).messages.resolve(messageId);
+        
+        // First attempt to read from the locally cached messages
+        const message = (channel as TextChannel).messages.resolve(messageId);
+        if (message) {
+            return message;
+        }
+
+        // If not local, attempt to fetch from discord
+        this.env.log("Cache miss - fetching message from Discord");
+        const messages = await (channel as TextChannel).messages.fetch({
+            around: messageId,
+            limit: 1
+        });
+        return messages.get(messageId);
     }
 
     createChannel(channelName: string): Promise<Channel> {
@@ -83,10 +96,10 @@ export class DataResolver {
     }
 
     resolveUser(userId: DraftUserId): DraftUser {
-        return new DraftUser(this.dbDriver.getUserView(userId), this.discordResolver, this);
+        return new DraftUser(this.dbDriver.getUserView(userId), this);
     }
 
     resolveSession(sessionId: SessionId): Session {
-        return new Session(this, this.env, this.dbDriver.getSessionView(sessionId));
+        return new Session(this.dbDriver.getSessionView(sessionId), this, this.env);
     }
 }

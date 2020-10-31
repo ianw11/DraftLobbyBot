@@ -10,14 +10,14 @@ import { DraftUserId, SessionId } from './types/BaseTypes';
 const hri = require("human-readable-ids").hri; // JS Library
 
 export default class Session {
-    private readonly env: ENV;
-    private readonly dataResolver: DataResolver;
     private readonly data: ISessionView;
+    private readonly dataResolver: DataResolver;
+    private readonly env: ENV;
 
-    constructor (dataResolver: DataResolver, env: ENV, data: ISessionView) {
-        this.env = env;
-        this.dataResolver = dataResolver;
+    constructor (data: ISessionView, dataResolver: DataResolver, env: ENV) {
         this.data = data;
+        this.dataResolver = dataResolver;
+        this.env = env;
     }
 
     /////////////////////////
@@ -224,15 +224,17 @@ export default class Session {
         await asyncForEach(this.data.joinedPlayerIds, callback);
         await asyncForEach(this.data.waitlistedPlayerIds, callback);
 
-        const message = this.dataResolver.discordResolver.resolveMessageInAnnouncementChannel(this.sessionId);
+        const message = await this.dataResolver.discordResolver.resolveMessageInAnnouncementChannel(this.sessionId);
         // Clean up the announcement channel a bit
         if (message) {
             await message.delete();
+        } else {
+            this.env.log("Unable to delete message - not found in channel");
         }
     }
 
     private async updateMessage() {
-        const message = this.dataResolver.discordResolver.resolveMessageInAnnouncementChannel(this.sessionId);
+        const message = await this.dataResolver.discordResolver.resolveMessageInAnnouncementChannel(this.sessionId);
         if (message) {
             await message.edit('', this.getEmbed());
         }

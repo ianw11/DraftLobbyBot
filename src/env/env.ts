@@ -1,4 +1,4 @@
-import { TemplateSessionParameters } from "../database/SessionDBSchema";
+import { TemplateAndDBSessionParameters } from "../database/SessionDBSchema";
 import { replaceFromDict } from "../Utils";
 
 import ENV, {DEFAULTS} from './EnvBase';
@@ -41,7 +41,7 @@ export default env;
 // Re-export the type so this file is the only required import
 export {ENV};
 
-export const buildDefaultSessionParameters = (env: ENV): TemplateSessionParameters => {
+export const buildDefaultSessionParameters = (env: ENV): TemplateAndDBSessionParameters => {
     return {
         name: env.DEFAULT_SESSION_NAME,
         unownedSessionName: env.DEFAULT_UNOWNED_SESSION_NAME,

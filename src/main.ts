@@ -108,8 +108,13 @@ function onMessage(client: Client, env: ENV, dbDriver: DBDriver) {
                 }
 
                 // Finally execute
+                const start = Date.now();
                 await command.execute(new Context(props));
+                const end = Date.now();
                 await message.react('✔️');
+
+                const duration = end - start;
+                log(`Command '${commandStr}' took ${duration} millis, aka ${duration/1000} seconds`)
             } else {
                 log(`Invalid command: ${commandStr}`);
             }

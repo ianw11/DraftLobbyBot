@@ -11,7 +11,7 @@ export interface SessionDBSchema {
     joinedPlayerIds: DraftUserId[];
     waitlistedPlayerIds: DraftUserId[];
 
-    sessionParameters: SessionParametersDB;
+    sessionParameters: SessionParametersDB; // Defined in the next section
 
     sessionClosed: boolean;
 }
@@ -24,7 +24,7 @@ export interface SessionDBSchema {
     This interface exists in the database (as a child object), but it can also be generated from ENV (config files) and
     is thus exposed so ENV can work with it.
 */
-export interface TemplateSessionParameters {
+export interface TemplateAndDBSessionParameters {
     name: string;
     unownedSessionName: string;
     sessionCapacity: number;
@@ -52,7 +52,7 @@ interface GeneratedSessionParameters {
     This interface is the complete bundle that gets attached to the overall DB Schema and defines all available DB fields.
     It includes the public, config-powered properties as well as the private properties.
 */
-export type SessionParametersDB = TemplateSessionParameters & GeneratedSessionParameters;
+export type SessionParametersDB = TemplateAndDBSessionParameters & GeneratedSessionParameters;
 
 
 /////////////////////////
@@ -67,14 +67,13 @@ export type SessionParametersDB = TemplateSessionParameters & GeneratedSessionPa
 export type SessionParametersWithSugar = SessionParametersDB & {
     date?: Date // The lack of this field indicates the Session intends to start immediately - aka probably an ad-hoc event
 };
-export interface ISessionViewWithSugar extends SessionDBSchema {
-    sessionParameters: SessionParametersWithSugar;
-}
 
 /*
     This is the interface that defines the available convenience methods associated with the DB Schema
 */
-export interface ISessionView extends ISessionViewWithSugar {
+export interface ISessionView extends SessionDBSchema {
+    sessionParameters: SessionParametersWithSugar; // Overriding so we can define more complex types than what is stored in the DB
+
     addToConfirmed(id: DraftUserId): void;
     removeFromConfirmed(id: DraftUserId): void;
     getNumConfirmed(): number;
@@ -89,9 +88,10 @@ export interface ISessionView extends ISessionViewWithSugar {
     constructing a Session.  For now, we only inject the user id of the user who
     runs the start command (marking them as owner of the Session).
 */
-export type SessionConstructorParameter = Partial<SessionParametersWithSugar> & {
-    ownerId?: string
-};
+export type SessionInjectedParameters = {
+    ownerId: string
+}
+export type SessionConstructorParameter = Partial<SessionParametersWithSugar> & Partial<SessionInjectedParameters>;
 
 // TODO: Come back to this later
 

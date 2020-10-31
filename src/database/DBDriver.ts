@@ -16,18 +16,26 @@ export abstract class DBDriverBase {
         return {userId: userId, joinedSessionIds: [], waitlistedSessionIds: []};
     }
 
+    buildSessionParams(env: ENV, params?: SessionConstructorParameter): SessionParametersWithSugar {
+        return {
+            ...buildDefaultSessionParameters(env),
+            ...(params || {})
+        };
+    }
+
     buildSessionFromTemplate(sessionId: SessionId, env: ENV, params?: SessionConstructorParameter): SessionDBSchema {
         let ownerId = undefined;
         if (params) {
             ownerId = params.ownerId;
         }
-        console.log(`owner id: ${ownerId}`);
-    
-        const sessionParams: SessionParametersWithSugar = {
-            ...buildDefaultSessionParameters(env),
-            ...(params || {})
-        };
 
-        return {sessionId: sessionId, ownerId: ownerId, joinedPlayerIds: [], waitlistedPlayerIds: [], sessionClosed: false, sessionParameters: sessionParams};
+        return {
+            sessionId: sessionId,
+            ownerId: ownerId,
+            joinedPlayerIds: [],
+            waitlistedPlayerIds: [],
+            sessionClosed: false,
+            sessionParameters: this.buildSessionParams(env, params)
+        };
     }
 }
