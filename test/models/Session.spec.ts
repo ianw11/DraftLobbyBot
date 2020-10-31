@@ -1,8 +1,10 @@
 import {expect, assert} from "../chaiAsync.spec";
 import setup, { MocksInterface, mockConstants, mockEnv } from "../setup.spec";
-import Session, { SessionConstructorParameter } from "../../src/models/Session";
+import Session from "../../src/models/Session";
 import { Arg, SubstituteOf } from "@fluffy-spoon/substitute";
 import DraftUser from "../../src/models/DraftUser";
+import { SessionConstructorParameter, SessionParametersWithSugar, buildSessionParams } from "../../src/database/SessionDBSchema";
+import { InMemorySessionView } from "../../src/database/inmemory/InMemorySessionView";
 
 /*
 Could use testing:
@@ -13,18 +15,18 @@ Could use testing:
 let mocks: MocksInterface;
 let session: Session;
 
-beforeEach(async () => {
+beforeEach(() => {
     mocks = setup();
-    await resetSession();
+    resetSession();
 });
 
-async function resetSession(overrideSessionParameters?: Partial<SessionConstructorParameter>) {
-    session = new Session(mocks.userResolver, mockEnv, {...mocks.mockSessionParameters, ...(overrideSessionParameters || {})});
-    await session.resetMessage(mocks.mockAnnouncementChannel);
+function resetSession(overrideSessionParameters?: Partial<SessionConstructorParameter>) {
+    const sessionParams: SessionParametersWithSugar = buildSessionParams(mockEnv, {...mocks.mockSessionParameters, ...(overrideSessionParameters || {})});
+    session = new Session(new InMemorySessionView(mockConstants.SESSION_ID, sessionParams, mockConstants.DISCORD_USER_ID), mocks.mockDataResolver, mockEnv);
 }
 
 describe("Basic Session Checks", () => {
-    it('has default parameters', async () => {
+    it('has default parameters', () => {
         const {USERNAME, DISCORD_USER_ID} = mockConstants;
         const {templateUrl, sessionWaitlistMessage} = mocks.mockSessionParameters;
 
@@ -33,7 +35,7 @@ describe("Basic Session Checks", () => {
         const overrideCancelMessage = "CANCEL";
 
         const date = new Date();
-        await resetSession({ownerId: DISCORD_USER_ID, description: mockEnv.DEFAULT_SESSION_DESCRIPTION, date: date, name: "%NAME%'s Draft", sessionConfirmMessage: overrideConfirmMessage, sessionCancelMessage: overrideCancelMessage});
+        resetSession({ownerId: DISCORD_USER_ID, description: mockEnv.DEFAULT_SESSION_DESCRIPTION, date: date, name: "%NAME%'s Draft", sessionConfirmMessage: overrideConfirmMessage, sessionCancelMessage: overrideCancelMessage});
         
         expect(session.getName()).to.equal(`${USERNAME}'s Draft`);
         expect(session.getFireWhenFull()).to.equal(mockEnv.DEFAULT_SESSION_FIRE_WHEN_FULL);
@@ -48,7 +50,7 @@ describe("Basic Session Checks", () => {
     it('can update parameters', async () => {
         const {mockSessionParameters, mockMessage} = mocks;
 
-        await resetSession({sessionConfirmMessage: "CONFIRM %URL%"});
+        resetSession({sessionConfirmMessage: "CONFIRM %URL%"});
 
         const NAME = "NEW NAME";
         await session.setName(NAME);
@@ -91,8 +93,8 @@ describe("Basic Session Checks", () => {
         mockMessage.received(0).edit(Arg.all());
     });
 
-    it('performs a string replacement', async () => {
-        await resetSession({sessionConfirmMessage: "%URL%"})
+    it('performs a string replacement', () => {
+        resetSession({sessionConfirmMessage: "%URL%"})
         session.setTemplateUrl('https://fakedomain.fake/?session=%HRI%');
 
         assert(session.getConfirmedMessage().startsWith('https://fakedomain.fake/?session='));

@@ -4,8 +4,9 @@ import { DMChannel, User, Message, Client, TextChannel } from "discord.js";
 import DraftUser from "../src/models/DraftUser";
 import ENV, {DEFAULTS} from "../src/env/EnvBase";
 import Context from "../src/commands/models/Context";
-import { InMemoryUserPersistentData, IUserView } from "../src/database/UserDBSchema";
-import { DataResolver, DiscordResolver } from "../src/models/types/DraftServerTypes";
+import { IUserView } from "../src/database/UserDBSchema";
+import { InMemoryUserView } from "../src/database/inmemory/InMemoryUserView";
+import { DataResolver, DiscordResolver } from "../src/models/types/ResolverTypes";
 import { SessionConstructorParameter } from "../src/database/SessionDBSchema";
 import Session from "../src/models/Session";
 import { DraftUserId, SessionId } from "../src/models/types/BaseTypes";
@@ -184,7 +185,7 @@ export default function setup(): MocksInterface {
         },
         mockSession: Substitute.for<Session>(),
 
-        mockUserView: new InMemoryUserPersistentData(DISCORD_USER_ID),
+        mockUserView: new InMemoryUserView(DISCORD_USER_ID),
 
         // A simple mock to get started
         mockDraftUser: generateCustomUser(),
@@ -224,6 +225,9 @@ export default function setup(): MocksInterface {
 
     const mockDiscordResolver = Substitute.for<DiscordResolver>();
     mockDataResolver.discordResolver.returns(mockDiscordResolver);
+    mockDiscordResolver.resolveUser(Arg.any()).returns(mocks.mockDiscordUser);
+    mockDiscordResolver.resolveMessageInAnnouncementChannel(Arg.any()).resolves(mocks.mockMessage);
+    mockDiscordResolver.resolveMessage(Arg.any(), Arg.any()).resolves(mocks.mockMessage);
 
     
     // Attach the output DM channel to the Discord User

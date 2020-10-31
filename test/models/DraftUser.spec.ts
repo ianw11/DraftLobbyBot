@@ -1,5 +1,5 @@
 import {assert, expect} from 'chai';
-import IUserPersistentData from '../../src/database/UserDBSchema';
+import { IUserView } from '../../src/database/UserDBSchema';
 import DraftUser from '../../src/models/DraftUser';
 import setup, { MocksInterface, MocksConstants, mockConstants } from '../setup.spec';
 
@@ -15,12 +15,12 @@ let mocks: MocksInterface;
 
 // The user we're testing in this file - reset every test
 let user: DraftUser;
-let userData: IUserPersistentData;
+let userData: IUserView;
 
 beforeEach(() => {
     mocks = setup();
-    userData = mocks.mockUserPersistentData;
-    user = new DraftUser(userData, mocks.discordUserResolver, mocks.sessionResolver);
+    userData = mocks.mockUserView;
+    user = new DraftUser(userData, mocks.mockDataResolver);
 });
 afterEach(() => {
     // None for now...

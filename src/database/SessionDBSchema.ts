@@ -1,4 +1,12 @@
+import { buildDefaultSessionParameters, ENV } from "../env/env";
 import { DraftUserId, SessionId } from "../models/types/BaseTypes";
+
+export function buildSessionParams(env: ENV, params?: SessionConstructorParameter): SessionParametersWithSugar {
+    return {
+        ...buildDefaultSessionParameters(env),
+        ...(params || {})
+    };
+}
 
 /*
     This interface is what defines the database

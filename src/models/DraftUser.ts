@@ -6,7 +6,6 @@ import { DraftUserId, SessionId } from "./types/BaseTypes";
 
 export default class DraftUser {
     private readonly data: IUserView;
-    
     private readonly dataResolver: DataResolver;
 
     // Computed then cached for use in sendDM
@@ -14,7 +13,6 @@ export default class DraftUser {
 
     constructor(data: IUserView, dataResolver: DataResolver) {
         this.data = data;
-
         this.dataResolver = dataResolver;
     }
 

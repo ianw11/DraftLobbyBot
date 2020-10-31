@@ -1,7 +1,7 @@
 import { ENV } from "../../env/env";
 import { DraftUserId, SessionId } from "../../models/types/BaseTypes";
 import { DBDriver, DBDriverBase } from "../DBDriver";
-import { ISessionView, SessionConstructorParameter } from "../SessionDBSchema";
+import { buildSessionParams, ISessionView, SessionConstructorParameter } from "../SessionDBSchema";
 import { IUserView } from "../UserDBSchema";
 import { InMemorySessionView } from "./InMemorySessionView";
 import { InMemoryUserView } from "./InMemoryUserView";
@@ -24,7 +24,7 @@ export class InMemoryDriver extends DBDriverBase implements DBDriver {
     }
 
     createSession(sessionId: SessionId, env: ENV, params?: SessionConstructorParameter): ISessionView {
-        const view = new InMemorySessionView(sessionId, this.buildSessionParams(env, params), params?.ownerId);
+        const view = new InMemorySessionView(sessionId, buildSessionParams(env, params), params?.ownerId);
         this.sessionViews[sessionId] = view;
         return view;
     }

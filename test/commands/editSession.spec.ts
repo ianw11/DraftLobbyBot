@@ -1,4 +1,3 @@
-
 import _EditSession from "../../src/commands/editSession";
 import { buildContext } from "../setup.spec";
 import { expect } from "../chaiAsync.spec";

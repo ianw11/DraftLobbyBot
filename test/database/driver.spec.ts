@@ -1,16 +1,19 @@
 import { expect } from "chai";
-import { getUserView, deleteUserFromDatabase } from "../../src/database/driver";
-import UserPersistentData from "../../src/database/UserDBSchema";
+import { IUserView } from "../../src/database/UserDBSchema";
 import { mockConstants } from '../setup.spec';
+import { LowdbDriver } from "../../src/database/lowdb/LowdbDriver";
+import { DBDriver } from "../../src/database/DBDriver";
 
-let data: UserPersistentData;
+let driver: DBDriver;
+let data: IUserView;
 const { DISCORD_USER_ID } = mockConstants;
 beforeEach(() => {
-    data = getUserView(DISCORD_USER_ID);
+    driver = new LowdbDriver();
+    data = driver.getUserView(DISCORD_USER_ID);
 });
 
 afterEach(() => {
-    deleteUserFromDatabase(DISCORD_USER_ID);
+    driver.deleteUserFromDatabase(DISCORD_USER_ID);
 });
 
 describe("can read and write from db", () => {
