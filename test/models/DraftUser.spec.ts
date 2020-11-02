@@ -33,7 +33,10 @@ describe('Basic User Tests (Probably canaries in the coal mine)', () => {
     });
 
     it('should know its username', () => {
-        expect(user.getDisplayName()).to.equal(constants.USERNAME);
+        expect(user.getDisplayName()).to.equal(constants.NICKNAME);
+
+        const noNicknameUser = new DraftUser(mocks.createMockUserView(), mocks.mockDataResolver);
+        expect(noNicknameUser.getDisplayName()).to.equal(constants.USERNAME);
     });
     it('sends a DM successfully', async () => {
         const message = "WORDS";

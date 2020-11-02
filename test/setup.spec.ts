@@ -1,8 +1,8 @@
 import Substitute, { SubstituteOf, Arg } from "@fluffy-spoon/substitute";
 import DraftServer from "../src/models/DraftServer";
-import { DMChannel, User, Message, Client, TextChannel } from "discord.js";
+import { DMChannel, User, Message, Client, TextChannel, GuildMember } from "discord.js";
 import DraftUser from "../src/models/DraftUser";
-import ENV, {DEFAULTS} from "../src/env/EnvBase";
+import ENV, { DEFAULTS, ShallowEnvRequiredFields } from "../src/env/EnvBase";
 import Context from "../src/commands/models/Context";
 import { IUserView } from "../src/database/UserDBSchema";
 import { InMemoryUserView } from "../src/database/inmemory/InMemoryUserView";
@@ -32,6 +32,8 @@ of the larger MocksInterface
 export interface MocksConstants {
     DISCORD_USER_ID: string,
     USERNAME: string,
+    NICKNAME: string,
+    TAG: string,
     SESSION_ID: string,
     NUM_CONFIRMED: number,
     NUM_IN_WAITLIST: number,
@@ -41,6 +43,8 @@ export interface MocksConstants {
 export const mockConstants: MocksConstants = {
     DISCORD_USER_ID: 'TEST DISCORD USER ID',
     USERNAME: 'TEST USERNAME',
+    NICKNAME: 'TEST NICKNAME',
+    TAG: 'TEST#0000',
     SESSION_ID: 'TEST SESSION ID',
     NUM_CONFIRMED: 5,
     NUM_IN_WAITLIST: 3,
@@ -58,12 +62,17 @@ export interface MocksInterface {
     mockDiscordUser: SubstituteOf<User>,
     mockDmChannel: SubstituteOf<DMChannel>,
     mockMessage: SubstituteOf<Message>,
-    userGenerator: () => SubstituteOf<DraftUser>
+    userGenerator: () => SubstituteOf<DraftUser>,
+    createMockUserView: () => IUserView
 }
 
-export const mockEnv: ENV = {...DEFAULTS, ...{
+const INJECTED_PARAMS: ShallowEnvRequiredFields = {
     DISCORD_BOT_TOKEN: "MOCK DISCORD BOT TOKEN"
-}};
+};
+
+// The ENV object made available to tests
+
+export const mockEnv: ENV = {...DEFAULTS, ...INJECTED_PARAMS};
 
 ////////////////////
 // TEST LIFECYCLE //
@@ -73,25 +82,49 @@ export const mockEnv: ENV = {...DEFAULTS, ...{
 let builtMocks: MocksInterface;
 let generatedUsers = {};
 let generatedDiscordUsers = {};
+let generatedGuildMembers = {};
 
 // Execute before every test
 beforeEach(() => {
     builtMocks = null;
     generatedUsers = {};
     generatedDiscordUsers = {};
+    generatedGuildMembers = {};
 });
 
 ///////////////////////////////////////////////////
 // METHODS TO BUILD BOILERPLATE/TEMPLATE OBJECTS //
 ///////////////////////////////////////////////////
 
-function buildMockDiscordUser(id: string, username: string): SubstituteOf<User> {
+function buildUserView(_id?: string, nickname?: string): IUserView {
+    const id = _id || `USER_VIEW_MOCK_${idGenerator.next().value}`;
+    const {USERNAME} = mockConstants;
+    buildMockDiscordUser(id, USERNAME, nickname);
+    return new InMemoryUserView(id);
+}
+
+function buildMockDiscordUser(id: string, username: string, nickname?: string, tag?: string): SubstituteOf<User> {
     const user = Substitute.for<User>();
     user.id.returns(id);
     user.username.returns(username);
+    user.tag.returns(tag ? tag : `${username}#0000`);
 
     generatedDiscordUsers[id] = user;
+
+    // If we make a Discord User we will want to ALSO make sure there is a corresponding Discord Guild Member
+    buildMockDiscordGuildMember(id, nickname)
+
     return user;
+}
+
+function buildMockDiscordGuildMember(id: string, nickname?: string): SubstituteOf<GuildMember> {
+    const member = Substitute.for<GuildMember>();
+    member.id.returns(id);
+    member.nickname.returns(nickname);
+
+    generatedGuildMembers[id] = member;
+
+    return member;
 }
 
 // This method is also exported!
@@ -112,41 +145,49 @@ export function buildContext(parameters: string[] = ["NO_PARAMS"]): Context {
 // GENERATOR MADNESS //
 ///////////////////////
 
+function* _idGenerator(): Generator<number> {
+    let id = 0;
+    while (true) {
+        yield id++;
+    }
+}
+const idGenerator = _idGenerator();
+
 /*
 This is a generator function (identified as "function*") that will make
 an unlimited amount of DraftUsers with always increasing ids.
 */
-function* uniqueUserGenerator(userId?: DraftUserId, name?: string): Generator<SubstituteOf<DraftUser>> {
-    let id = 0;
+function* uniqueUserGenerator(_userId?: DraftUserId, name?: string, nickname?: string): Generator<SubstituteOf<DraftUser>> {
     while (true) {
         const draftUser: SubstituteOf<DraftUser> = Substitute.for<DraftUser>();
-        draftUser.getUserId().returns(userId ? userId : `ID_BULK_USER_${id}`);
-        draftUser.getDisplayName().returns(name ? name : `BULK_USER_${id}`);
+        const id = idGenerator.next();
+        const userId = _userId ? _userId : `ID_BULK_USER_${id.value}`;
+        draftUser.getUserId().returns(userId);
+        const username = name ? name : `BULK_USER_${id}`;
+        draftUser.getDisplayName().returns(username);
 
         // Apparently Substitute doesn't mock properties, so we must explicitly do that here
 
-        let createdSessionId;
+        let createdSessionId: SessionId;
         draftUser.setCreatedSessionId(Arg.any()).mimicks((newId) => createdSessionId = newId);
         draftUser.getCreatedSessionId().mimicks(() => createdSessionId);
 
-        ++id;
+        // Finally if we create a user we'd better also create a backing Discord User
+        buildMockDiscordUser(userId, username, nickname);
+
         yield draftUser;
     }
 }
 
 function persistUser(draftUser: SubstituteOf<DraftUser>): SubstituteOf<DraftUser> {
     const userId = draftUser.getUserId();
-
-    // Build a backing discord user
-    buildMockDiscordUser(userId, `DISCORD_USER_${userId}`);
-
     generatedUsers[userId] = draftUser;
     return draftUser;
 }
 
 // We then take the user generator function and create 2 generators (one with overrides)
 const basicUserGenerator = uniqueUserGenerator();
-const customUserGenerator = uniqueUserGenerator(mockConstants.DISCORD_USER_ID, mockConstants.USERNAME);
+const customUserGenerator = uniqueUserGenerator(mockConstants.DISCORD_USER_ID, mockConstants.USERNAME, mockConstants.NICKNAME);
 // The generators are then wrapped in a persistance function and made available to test runners
 const generateBasicUser = () => persistUser(basicUserGenerator.next().value as SubstituteOf<DraftUser>);
 const generateCustomUser = () => persistUser(customUserGenerator.next().value as SubstituteOf<DraftUser>);
@@ -160,7 +201,7 @@ export default function setup(): MocksInterface {
         return builtMocks;
     }
 
-    const {SESSION_ID, NUM_CONFIRMED, NUM_IN_WAITLIST, DISCORD_USER_ID, USERNAME} = mockConstants;
+    const {SESSION_ID, NUM_CONFIRMED, NUM_IN_WAITLIST, DISCORD_USER_ID, USERNAME, NICKNAME, TAG} = mockConstants;
 
     const mockDataResolver = Substitute.for<DataResolver>();
 
@@ -190,7 +231,7 @@ export default function setup(): MocksInterface {
         // A simple mock to get started
         mockDraftUser: generateCustomUser(),
         // Set up the mock for Discord User object backing our DraftUser
-        mockDiscordUser: buildMockDiscordUser(DISCORD_USER_ID, USERNAME),
+        mockDiscordUser: buildMockDiscordUser(DISCORD_USER_ID, USERNAME, NICKNAME, TAG),
 
         mockAnnouncementChannel: Substitute.for<TextChannel>(),
 
@@ -200,7 +241,9 @@ export default function setup(): MocksInterface {
         // The message used to announce a draft
         mockMessage: Substitute.for<Message>(),
 
-        mockDataResolver: mockDataResolver
+        mockDataResolver: mockDataResolver,
+
+        createMockUserView: () => buildUserView()
     };
 
     // With the main mocks done, hook up the overrides...
@@ -225,7 +268,9 @@ export default function setup(): MocksInterface {
 
     const mockDiscordResolver = Substitute.for<DiscordResolver>();
     mockDataResolver.discordResolver.returns(mockDiscordResolver);
-    mockDiscordResolver.resolveUser(Arg.any()).returns(mocks.mockDiscordUser);
+    mockDiscordResolver.resolveUser(Arg.any()).mimicks(id => generatedDiscordUsers[id]);
+    mockDiscordResolver.resolveGuildMember(Arg.any()).mimicks(id => generatedGuildMembers[id]);
+    mockDiscordResolver.resolveGuildMemberFromTag(Arg.any()).mimicks(id => generatedGuildMembers[id]);
     mockDiscordResolver.resolveMessageInAnnouncementChannel(Arg.any()).resolves(mocks.mockMessage);
     mockDiscordResolver.resolveMessage(Arg.any(), Arg.any()).resolves(mocks.mockMessage);
 

@@ -9,7 +9,7 @@ let data: IUserView;
 const { DISCORD_USER_ID } = mockConstants;
 beforeEach(() => {
     driver = new LowdbDriver();
-    data = driver.getUserView(DISCORD_USER_ID);
+    data = driver.getOrCreateUserView(DISCORD_USER_ID);
 });
 
 afterEach(() => {

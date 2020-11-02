@@ -19,7 +19,8 @@ interface ShallowEnvDefaultable {
 }
 
 // These MUST be defined in env.json for the bot to work
-interface ShallowEnvRequiredFields {
+// Exported for testing purposes - shouldn't be referenced otherwise
+export interface ShallowEnvRequiredFields {
     DISCORD_BOT_TOKEN: string;
 }
 

@@ -103,14 +103,14 @@ describe("Basic Session Checks", () => {
 });
 
 describe('queue and waitlist checking', () => {
-    it('can accept 100 users', () => {
+    it('can accept 100 users', async () => {
         const {userGenerator, mockSessionParameters} = mocks;
         const {sessionCapacity} = mockSessionParameters;
 
         session.setFireWhenFull(false);
 
         for (let i = 0; i < 100; ++i) {
-            session.addPlayer(userGenerator());
+            await session.addPlayer(userGenerator());
         }
 
         expect(session.getNumConfirmed()).to.eq(sessionCapacity);
