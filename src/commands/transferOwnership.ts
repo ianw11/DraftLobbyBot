@@ -45,4 +45,12 @@ export class TransferOwnershipCommand implements Command {
             return input;
         }
     }
+
+    help(): string {
+        return "Allows the session owner to transfer ownership to another person";
+    }
+
+    usage(invocation: string): string {
+        return `${invocation} @mention OR ${invocation} username#0000 OR ${invocation} UserId`;
+    }
 }

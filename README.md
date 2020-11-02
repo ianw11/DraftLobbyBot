@@ -75,6 +75,14 @@ To see session information, including who is currently signed up/waitlisted, use
 ### Start session
 When everything looks ready to go, use `!start`
 
+### Transfer Session ownership
+If you no longer want to run a session you can choose to transfer ownership to another member.
+Use `!transfer` or `!transferTo` followed by one of the following:
+- @mention the new owner
+- the user tag (which is the username#0000)
+- the user id (you need to enable developer mode in discord)
+In addition, the new owner must be in the session already and must not already be running their own Session.
+
 ### Delete/Close session
 `!delete`.  This notifies everybody who's joined/waitlisted.
 

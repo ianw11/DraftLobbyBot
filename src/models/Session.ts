@@ -200,8 +200,13 @@ export default class Session {
 
     async changeOwner(newOwner: DraftUser): Promise<void> {
         const displayName = newOwner.getDisplayName();
+        
         if (newOwner.getCreatedSessionId()) {
             throw new Error(`Unable to transfer - ${displayName} already has a Session`);
+        }
+        const newDiscordUser = this.dataResolver.discordResolver.resolveUser(newOwner.getUserId());
+        if (!newDiscordUser || newDiscordUser.bot) {
+            throw new Error(`Unable to transfer - ${displayName} either cannot be resolved or is a bot`);
         }
         const newOwnerId = newOwner.getUserId();
 
