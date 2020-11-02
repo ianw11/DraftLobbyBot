@@ -51,22 +51,21 @@ export default class Session {
 
     async setName(name: string): Promise<void> {
         this.data.sessionParameters.name = name;
-        this.data.sessionParameters._generatedName = undefined;
         await this.updateMessage();
     }
     getName(): string {
-        if (!this.data.sessionParameters._generatedName) {
-            if (this.data.ownerId && this.data.sessionParameters.name) {
-                const name = this.dataResolver.resolveUser(this.data.ownerId).getDisplayName();
-                this.data.sessionParameters._generatedName = replaceFromDict(this.data.sessionParameters.name, "%", {
-                    USER: name,
-                    NAME: name
-                });
-            } else {
-                this.data.sessionParameters._generatedName = this.data.sessionParameters.unownedSessionName;
-            }
+        let outputName;
+        if (this.data.ownerId && this.data.sessionParameters.name) {
+            const name = this.dataResolver.resolveUser(this.data.ownerId).getDisplayName();
+
+            outputName = replaceFromDict(this.data.sessionParameters.name, "%", {
+                USER: name,
+                NAME: name
+            });
+        } else {
+            outputName = this.data.sessionParameters.unownedSessionName;
         }
-        return this.data.sessionParameters._generatedName;
+        return outputName;
     }
 
     setTemplateUrl(templateUrl?: string): void {
@@ -197,6 +196,30 @@ export default class Session {
         }
 
         await this.terminate(true);
+    }
+
+    async changeOwner(newOwner: DraftUser): Promise<void> {
+        const displayName = newOwner.getDisplayName();
+        if (newOwner.getCreatedSessionId()) {
+            throw new Error(`Unable to transfer - ${displayName} already has a Session`);
+        }
+        const newOwnerId = newOwner.getUserId();
+
+        const joinedUsers = this.data.joinedPlayerIds;
+        if (!joinedUsers.includes(newOwnerId)) {
+            throw new Error(`Unable to change owner to somebody that hasn't joined the session - have ${displayName} join first then retry`);
+        }
+
+        // Output message first so it retains the old user's name (for the broadcast title)
+        await this.broadcast(`Session ownership has transferred to ${displayName}`, true);
+
+        // Clear the existing owner
+        if (this.data.ownerId) {
+            this.dataResolver.resolveUser(this.data.ownerId).setCreatedSessionId();
+        }
+        // Set the new owner
+        this.data.ownerId = newOwnerId;
+        newOwner.setCreatedSessionId(this.data.sessionId);
     }
     
     async terminate(started = false): Promise<void> {

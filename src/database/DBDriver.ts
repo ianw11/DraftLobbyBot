@@ -4,7 +4,7 @@ import { buildSessionParams, ISessionView, SessionConstructorParameter, SessionD
 import { IUserView, UserDBSchema } from './UserDBSchema';
 
 export interface DBDriver {
-    getUserView(userId: DraftUserId): IUserView;
+    getOrCreateUserView(userId: DraftUserId): IUserView;
     deleteUserFromDatabase(userId: DraftUserId): void;
     createSession(sessionId: SessionId, env: ENV, params?: SessionConstructorParameter): ISessionView;
     getSessionView(sessionId: SessionId): ISessionView;

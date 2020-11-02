@@ -31,7 +31,7 @@ export class LowdbDriver extends DBDriverBase implements DBDriver {
         }).write();
     }
 
-    getUserView(userId: DraftUserId): IUserView {
+    getOrCreateUserView(userId: DraftUserId): IUserView {
         const users = this.db.get("Users");
         const cursor = users.find({userId: userId});
         if (!cursor.value()) {

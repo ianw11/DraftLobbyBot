@@ -9,6 +9,7 @@ import EditSessionCommand from './editSession';
 import HelpCommand from './help';
 import BroadcastCommand from './broadcast';
 import TemplateCommand from './templates';
+import { TransferOwnershipCommand } from './transferOwnership';
 
 const Mapping: Record<string, Command> = {
     'list': ListCommand.singleton,
@@ -22,6 +23,8 @@ const Mapping: Record<string, Command> = {
     'broadcast': BroadcastCommand.singleton,
     'template': TemplateCommand.singleton,
     'templates': TemplateCommand.singleton,
+    'transfer': TransferOwnershipCommand.singleton,
+    'transferTo': TransferOwnershipCommand.singleton,
 
     /* Add more Commands above this line (no reason other than it's easier to remember the comma) */
     'debug': DebugCommand.singleton

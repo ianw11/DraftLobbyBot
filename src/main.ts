@@ -8,6 +8,7 @@ import Context, { ContextProps } from './commands/models/Context';
 import { DataResolver, DiscordResolver } from './models/types/ResolverTypes';
 import { LowdbDriver } from './database/lowdb/LowdbDriver';
 import { DBDriver } from './database/DBDriver';
+import { InMemoryDriver } from './database/inmemory/InMemoryDriver';
 
 //
 // To set your Discord Bot Token, take a look at ./env/env.ts for an explanation (hint: make an env.json)
@@ -17,7 +18,6 @@ import { DBDriver } from './database/DBDriver';
 
 // TODO: This needs to be moved to a persistence layer
 const SERVERS: {[guildId: string]: DraftServer} = {};
-const DB_DRIVER = new LowdbDriver();
 
 ////////////////
 // DATA LAYER //
@@ -151,6 +151,20 @@ function onReaction(env: ENV, dbDriver: DBDriver, callback: ReactionCallback): C
 export default function main(env: ENV): void {
     const {DISCORD_BOT_TOKEN, BOT_ACTIVITY, BOT_ACTIVITY_TYPE, MESSAGE_CACHE_SIZE} = env;
 
+    // Setup database
+    let dbDriver;
+    switch(env.DB_DRIVER) {
+        case 'lowdb':
+            dbDriver = new LowdbDriver();
+            break;
+        case 'inmemory':
+            dbDriver = new InMemoryDriver();
+            break;
+        default:
+            throw new Error("Database Driver required but none matched available values");
+    }
+
+    // Build Discord Client Parameters
     const presence: PresenceData = {
         status: 'online',
         afk: false,
@@ -159,21 +173,21 @@ export default function main(env: ENV): void {
             name: replaceStringWithEnv(BOT_ACTIVITY, env)
         } : { }
     };
-
     const DISCORD_CLIENT_OPTIONS: ClientOptions = {
         messageCacheMaxSize: MESSAGE_CACHE_SIZE,
         presence: presence
     };
 
+    // Create Discord Client
     const client = new Client(DISCORD_CLIENT_OPTIONS);
 
+    // Attach listeners to Discord Client
     client.once('ready', () => {
         env.log("Logged in successfully");
     });
-
-    client.on('message', onMessage(client, env, DB_DRIVER));
-    client.on('messageReactionAdd', onReaction(env, DB_DRIVER, async (draftUser, session) => await session.addPlayer(draftUser)));
-    client.on('messageReactionRemove', onReaction(env, DB_DRIVER, async (draftUser, session) => await session.removePlayer(draftUser)));
+    client.on('message', onMessage(client, env, dbDriver));
+    client.on('messageReactionAdd', onReaction(env, dbDriver, async (draftUser, session) => await session.addPlayer(draftUser)));
+    client.on('messageReactionRemove', onReaction(env, dbDriver, async (draftUser, session) => await session.removePlayer(draftUser)));
 
     if (DISCORD_BOT_TOKEN) {
         // Yes, this is THE login call

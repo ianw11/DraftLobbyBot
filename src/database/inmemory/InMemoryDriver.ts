@@ -10,7 +10,7 @@ export class InMemoryDriver extends DBDriverBase implements DBDriver {
     private readonly userViews: Record<DraftUserId, IUserView | undefined> = {};
     private readonly sessionViews: Record<SessionId, ISessionView | undefined> = {};
 
-    getUserView(userId: DraftUserId): IUserView {
+    getOrCreateUserView(userId: DraftUserId): IUserView {
         let view = this.userViews[userId];
         if (!view) {
             view = new InMemoryUserView(userId);

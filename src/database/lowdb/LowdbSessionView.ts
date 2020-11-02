@@ -172,11 +172,4 @@ class SessionParametersPersistentData extends LowDbViewBase<SessionParametersDB>
     set _generatedUrl(url: string) {
         this.assign({_generatedUrl: url});
     }
-
-    get _generatedName(): string {
-        return this.getString('_generatedName');
-    }
-    set _generatedName(name: string) {
-        this.assign({_generatedName: name});
-    }
 }

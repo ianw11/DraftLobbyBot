@@ -1,20 +1,29 @@
 import { ActivityType } from "discord.js";
 
+type DatabaseDriver = 'inmemory' | 'lowdb';
+
 /////////////////////////////////////////////////
 // INTERFACES GROUPING THE CONFIGURABLE VALUES //
 /////////////////////////////////////////////////
 
-interface ShallowEnv {
-    DISCORD_BOT_TOKEN: string;
-    
+interface ShallowEnvDefaultable {
     PREFIX: string;
     DRAFT_CHANNEL_NAME: string;
     EMOJI: string;
     ERROR_OUTPUT: string;
+
+    DB_DRIVER: DatabaseDriver;
     
     DEBUG: boolean;
     log: (msg: string) => void;
 }
+
+// These MUST be defined in env.json for the bot to work
+interface ShallowEnvRequiredFields {
+    DISCORD_BOT_TOKEN: string;
+}
+
+type ShallowEnv = ShallowEnvDefaultable & ShallowEnvRequiredFields;
 
 interface EnvClientOptions {
     BOT_ACTIVITY: string;
@@ -43,13 +52,15 @@ interface EnvSessionOptions {
 // DEFAULT VALUES //
 ////////////////////
 
-const DefaultShallowEnvDefaults/*: ShallowEnv */ = {
+const DefaultShallowEnvDefaults: ShallowEnvDefaultable = {
     /* NO DISCORD_BOT_TOKEN - SEE ENV.TS FOR INFORMATION */
 
     PREFIX: "!",
     DRAFT_CHANNEL_NAME: "draft-announcements",
     EMOJI: "🌟",
     ERROR_OUTPUT: "%s (If this doesn't make sense, please inform an admin)",
+
+    DB_DRIVER: 'lowdb',
 
     DEBUG: false,
     log: console.log

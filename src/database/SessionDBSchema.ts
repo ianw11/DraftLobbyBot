@@ -53,7 +53,6 @@ export interface TemplateAndDBSessionParameters {
 */
 interface GeneratedSessionParameters {
     _generatedUrl?: string;
-    _generatedName?: string;
 }
 
 /*

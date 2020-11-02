@@ -1,6 +1,6 @@
 import DraftUser from "../DraftUser";
 import Session from "../Session";
-import { Channel, Guild, GuildChannel, Message, TextChannel, User } from 'discord.js';
+import { Channel, Guild, GuildChannel, GuildMember, Message, TextChannel, User } from 'discord.js';
 import { DBDriver } from "../../database/DBDriver";
 import { ENV } from "../../env/env";
 import { DraftUserId, SessionId } from "./BaseTypes";
@@ -16,8 +16,22 @@ export class DiscordResolver {
         this.env = env;
     }
 
+    resolveGuildMemberFromTag(userTag: string): GuildMember | undefined {
+        let member: GuildMember | undefined;
+        this.guild.members.cache.each(cacheMember => {
+            if (!member && cacheMember.user.tag === userTag) {
+                member = cacheMember;
+            }
+        });
+        return member;
+    }
+
+    resolveGuildMember(userId: string): GuildMember | null {
+        return this.guild.members.resolve(userId);
+    }
+
     resolveUser(userId: string): User | undefined {
-        return this.guild.members.resolve(userId)?.user;
+        return this.resolveGuildMember(userId)?.user;
     }
 
     async resolveMessageInAnnouncementChannel(messageId: string): Promise<Message | undefined> {
@@ -96,7 +110,7 @@ export class DataResolver {
     }
 
     resolveUser(userId: DraftUserId): DraftUser {
-        return new DraftUser(this.dbDriver.getUserView(userId), this);
+        return new DraftUser(this.dbDriver.getOrCreateUserView(userId), this);
     }
 
     resolveSession(sessionId: SessionId): Session {

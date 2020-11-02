@@ -1,6 +1,6 @@
 import { DataResolver } from "./types/ResolverTypes";
 import Session from "./Session";
-import { User, DMChannel, MessageEmbed } from "discord.js";
+import { User, DMChannel, MessageEmbed, GuildMember } from "discord.js";
 import { IUserView } from "../database/UserDBSchema";
 import { DraftUserId, SessionId } from "./types/BaseTypes";
 
@@ -20,12 +20,20 @@ export default class DraftUser {
         return this.dataResolver.discordResolver.resolveUser(this.data.userId);
     }
 
+    private getDiscordGuildMember(): GuildMember | null {
+        return this.dataResolver.discordResolver.resolveGuildMember(this.data.userId);
+    }
+
     getUserId(): DraftUserId {
         return this.data.userId;
     }
 
     getDisplayName(): string {
-        return this.getDiscordUser()?.username || "<UNABLE TO GET USERNAME FROM DISCORD>";
+        let name = this.getDiscordGuildMember()?.nickname;
+        if (!name) {
+            name = this.getDiscordUser()?.username || "<UNABLE TO GET USERNAME FROM DISCORD>";
+        }
+        return name;
     }
 
     setCreatedSessionId(createdSessionId?: SessionId): void {
