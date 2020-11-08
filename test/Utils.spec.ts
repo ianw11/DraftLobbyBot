@@ -154,6 +154,32 @@ describe('test asyncForEach (this could take up to 2 seconds)', () => {
 
         expect(outerArr).deep.equals(expected);
     });
+    it('Executes all callbacks even if one rejects', async () => {
+        const input = [0, 1, 2, 3];
+        const expectedOutput = [1, 2];
+        const output = [];
+        let rejectCount = 0;
+        const callback = async (elem: number, ndx: number) => {
+            if (ndx === 0 || ndx === 3) {
+                ++rejectCount;
+                throw new Error(`This should be thrown ${ndx}`);
+            } else {
+                output.push(elem);
+            }
+        }
+
+        /*
+        This is an important test because it shows something interesting - we can safely rely
+        on asyncForEach to fully execute each callback even if one throws and it will reject with
+        only the first error.
+
+        If this test fails it might signal an issue with the runtime/interpreter and/or how Promises are handled.
+        */
+
+        await expect(asyncForEach(input, callback)).is.rejectedWith('This should be thrown 0');
+        expect(expectedOutput).deep.equals(output);
+        expect(rejectCount).equals(2);
+    });
 });
 
 describe('test fillPodsFirst', () => {

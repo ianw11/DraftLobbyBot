@@ -26,12 +26,20 @@ export class DiscordResolver {
         return member;
     }
 
+    fetchGuildMember(userId: string): Promise<GuildMember> {
+        return this.guild.members.fetch(userId);
+    }
+
     resolveGuildMember(userId: string): GuildMember | null {
         return this.guild.members.resolve(userId);
     }
 
     resolveUser(userId: string): User | undefined {
         return this.resolveGuildMember(userId)?.user;
+    }
+
+    async resolveUserAsync(userId: string): Promise<User> {
+        return (await this.fetchGuildMember(userId)).user;
     }
 
     async resolveMessageInAnnouncementChannel(messageId: string): Promise<Message | undefined> {

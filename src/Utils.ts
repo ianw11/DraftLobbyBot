@@ -119,7 +119,7 @@ export function evenlySplitPods(quantity: number, podSize: number): number[] {
 
     This loop also functions the same as iterating through an array over and over, taking 1 from
     quantity and incrementing the array value ([0, 0] -> [1, 0] -> [1, 1] -> [2, 1] -> ...) but
-    only requires Math.ceil(quantity/podSize) iterations instead of ${quantity} interations with
+    only requires ${Math.ceil(quantity/podSize)} iterations instead of ${quantity} iterations with
     correspondingly fewer array reads/writes.
     */
 
