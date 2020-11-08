@@ -269,6 +269,7 @@ export default function setup(): MocksInterface {
     const mockDiscordResolver = Substitute.for<DiscordResolver>();
     mockDataResolver.discordResolver.returns(mockDiscordResolver);
     mockDiscordResolver.resolveUser(Arg.any()).mimicks(id => generatedDiscordUsers[id]);
+    mockDiscordResolver.resolveUserAsync(Arg.any()).mimicks(async id => generatedDiscordUsers[id]);
     mockDiscordResolver.resolveGuildMember(Arg.any()).mimicks(id => generatedGuildMembers[id]);
     mockDiscordResolver.resolveGuildMemberFromTag(Arg.any()).mimicks(id => generatedGuildMembers[id]);
     mockDiscordResolver.resolveMessageInAnnouncementChannel(Arg.any()).resolves(mocks.mockMessage);
