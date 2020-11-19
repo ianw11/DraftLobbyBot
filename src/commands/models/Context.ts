@@ -2,7 +2,7 @@ import { Client, User, Message } from "discord.js";
 import DraftServer from "../../models/DraftServer";
 import ENV from "../../env/EnvBase";
 import DraftUser from "../../models/DraftUser";
-import { DataResolver } from "../../models/types/ResolverTypes";
+import { Resolver } from "../../models/types/ResolverTypes";
 
 export interface ContextProps {
     env: ENV,
@@ -36,10 +36,10 @@ export default class Context {
     }
 
     get draftUser(): DraftUser {
-        return this.dataResolver.resolveUser(this.user.id);
+        return this.resolver.resolveUser(this.user.id);
     }
 
-    get dataResolver(): DataResolver {
-        return this.draftServer.dataResolver;
+    get resolver(): Resolver {
+        return this.draftServer.resolver;
     }
 }

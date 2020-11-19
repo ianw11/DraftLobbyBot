@@ -104,7 +104,7 @@ export class DiscordResolver {
     }
 }
 
-export class DataResolver {
+export class Resolver {
 
     readonly discordResolver;
     readonly env: ENV;

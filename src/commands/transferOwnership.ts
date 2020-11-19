@@ -11,7 +11,7 @@ export class TransferOwnershipCommand implements Command {
         if (!sessionId) {
             throw new Error("You do not own any sessions");
         }
-        const session = context.dataResolver.resolveSession(sessionId);
+        const session = context.resolver.resolveSession(sessionId);
 
         // Try to find the new owner, first by checking @mentions then by checking the parameters to this command
         const newOwnerId = this.findUserIdFromMentions(context) ||
@@ -19,7 +19,7 @@ export class TransferOwnershipCommand implements Command {
         if (!newOwnerId) {
             throw new Error("Either @mention somebody or paste their Discord Tag (eg username#0000) or Discord User Id");
         }
-        await session.changeOwner(context.dataResolver.resolveUser(newOwnerId));
+        await session.changeOwner(context.resolver.resolveUser(newOwnerId));
     }
 
     private findUserIdFromMentions(context: Context): string | undefined {
@@ -39,7 +39,7 @@ export class TransferOwnershipCommand implements Command {
 
         // If the input is username#tag
         if (input.includes("#")) {
-            return context.dataResolver.discordResolver.resolveGuildMemberFromTag(input)?.id;
+            return context.resolver.discordResolver.resolveGuildMemberFromTag(input)?.id;
         } else {
             // Otherwise we assume we got the user id
             return input;

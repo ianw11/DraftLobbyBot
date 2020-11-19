@@ -2,7 +2,7 @@ import {ENV} from '../env/env';
 import { MessageEmbed, EmbedFieldData } from "discord.js";
 import DraftUser from "./DraftUser";
 import { replaceFromDict, asyncForEach } from "../Utils";
-import { DataResolver } from "./types/ResolverTypes";
+import { Resolver } from "./types/ResolverTypes";
 import { ISessionView } from '../database/SessionDBSchema';
 import { DraftUserId, SessionId } from './types/BaseTypes';
 
@@ -11,12 +11,12 @@ const hri = require("human-readable-ids").hri; // JS Library
 
 export default class Session {
     private readonly data: ISessionView;
-    private readonly dataResolver: DataResolver;
+    private readonly resolver: Resolver;
     private readonly env: ENV;
 
-    constructor (data: ISessionView, dataResolver: DataResolver, env: ENV) {
+    constructor (data: ISessionView, resolver: Resolver, env: ENV) {
         this.data = data;
-        this.dataResolver = dataResolver;
+        this.resolver = resolver;
         this.env = env;
     }
 
@@ -56,7 +56,7 @@ export default class Session {
     getName(): string {
         let outputName;
         if (this.data.ownerId && this.data.sessionParameters.name) {
-            const name = this.dataResolver.resolveUser(this.data.ownerId).getDisplayName();
+            const name = this.resolver.resolveUser(this.data.ownerId).getDisplayName();
 
             outputName = replaceFromDict(this.data.sessionParameters.name, "%", {
                 USER: name,
@@ -180,7 +180,7 @@ export default class Session {
         const waitlist = this.data.waitlistedPlayerIds;
         const confirmed = this.data.joinedPlayerIds;
         while (this.canAddPlayers() && (upgradedPlayerId = waitlist.shift())) {
-            const upgradedPlayer = this.dataResolver.resolveUser(upgradedPlayerId);
+            const upgradedPlayer = this.resolver.resolveUser(upgradedPlayerId);
             confirmed.push(upgradedPlayerId);
             await upgradedPlayer.upgradedFromWaitlist(this);
         }
@@ -204,7 +204,7 @@ export default class Session {
         if (newOwner.getCreatedSessionId()) {
             throw new Error(`Unable to transfer - ${displayName} already has a Session`);
         }
-        const newDiscordUser = this.dataResolver.discordResolver.resolveUser(newOwner.getUserId());
+        const newDiscordUser = this.resolver.discordResolver.resolveUser(newOwner.getUserId());
         if (!newDiscordUser || newDiscordUser.bot) {
             throw new Error(`Unable to transfer - ${displayName} either cannot be resolved or is a bot`);
         }
@@ -220,7 +220,7 @@ export default class Session {
 
         // Clear the existing owner
         if (this.data.ownerId) {
-            this.dataResolver.resolveUser(this.data.ownerId).setCreatedSessionId();
+            this.resolver.resolveUser(this.data.ownerId).setCreatedSessionId();
         }
         // Set the new owner
         this.data.ownerId = newOwnerId;
@@ -248,11 +248,11 @@ export default class Session {
         */
 
         // Notify both joined and waitlisted that this Session is closed
-        const callback = async (draftUserId: DraftUserId) => await this.dataResolver.resolveUser(draftUserId).sessionClosed(this, started);
+        const callback = async (draftUserId: DraftUserId) => await this.resolver.resolveUser(draftUserId).sessionClosed(this, started);
         await asyncForEach(this.data.joinedPlayerIds, callback);
         await asyncForEach(this.data.waitlistedPlayerIds, callback);
 
-        const message = await this.dataResolver.discordResolver.resolveMessageInAnnouncementChannel(this.sessionId);
+        const message = await this.resolver.discordResolver.resolveMessageInAnnouncementChannel(this.sessionId);
         // Clean up the announcement channel a bit
         if (message) {
             await message.delete();
@@ -262,7 +262,7 @@ export default class Session {
     }
 
     private async updateMessage() {
-        const message = await this.dataResolver.discordResolver.resolveMessageInAnnouncementChannel(this.sessionId);
+        const message = await this.resolver.discordResolver.resolveMessageInAnnouncementChannel(this.sessionId);
         if (message) {
             await message.edit('', this.getEmbed());
         }
@@ -296,14 +296,14 @@ export default class Session {
         const sessionName = this.getName();
         let intro = `EVENT ${sessionName}`;
         if (this.data.ownerId) {
-            const owner = this.dataResolver.resolveUser(this.data.ownerId);
+            const owner = this.resolver.resolveUser(this.data.ownerId);
             intro = `${owner.getDisplayName()} (${sessionName})`
         }
         const callback = async (userId: DraftUserId) => {
             if (userId === this.data.ownerId) {
                 return;
             }
-            await this.dataResolver.resolveUser(userId).sendDM(`\`[BROADCAST] ${intro}\`\n${message}`);
+            await this.resolver.resolveUser(userId).sendDM(`\`[BROADCAST] ${intro}\`\n${message}`);
         };
 
         await asyncForEach(this.data.joinedPlayerIds, callback);
@@ -337,7 +337,7 @@ export default class Session {
         ];
 
         if (provideOwnerInformation) {
-            const reducer = (accumulator: string, current: DraftUserId) => `${accumulator}- ${this.dataResolver.resolveUser(current).getDisplayName()}\n`;
+            const reducer = (accumulator: string, current: DraftUserId) => `${accumulator}- ${this.resolver.resolveUser(current).getDisplayName()}\n`;
             fields.push({
                 name: "Currently Joined",
                 value: this.data.joinedPlayerIds.reduce(reducer, '')

@@ -6,7 +6,7 @@ import ENV, { DEFAULTS, ShallowEnvRequiredFields } from "../src/env/EnvBase";
 import Context from "../src/commands/models/Context";
 import { IUserView } from "../src/database/UserDBSchema";
 import { InMemoryUserView } from "../src/database/inmemory/InMemoryUserView";
-import { DataResolver, DiscordResolver } from "../src/models/types/ResolverTypes";
+import { Resolver, DiscordResolver } from "../src/models/types/ResolverTypes";
 import { SessionConstructorParameter } from "../src/database/SessionDBSchema";
 import Session from "../src/models/Session";
 import { DraftUserId, SessionId } from "../src/models/types/BaseTypes";
@@ -57,7 +57,7 @@ export interface MocksInterface {
     mockSession: SubstituteOf<Session>,
     mockUserView: IUserView,
     mockDraftUser: DraftUser,
-    mockDataResolver: DataResolver,
+    mockResolver: Resolver,
     mockAnnouncementChannel: SubstituteOf<TextChannel>,
     mockDiscordUser: SubstituteOf<User>,
     mockDmChannel: SubstituteOf<DMChannel>,
@@ -203,7 +203,7 @@ export default function setup(): MocksInterface {
 
     const {SESSION_ID, NUM_CONFIRMED, NUM_IN_WAITLIST, DISCORD_USER_ID, USERNAME, NICKNAME, TAG} = mockConstants;
 
-    const mockDataResolver = Substitute.for<DataResolver>();
+    const mockResolver = Substitute.for<Resolver>();
 
     // Try to pre-fill this object as much as possible
     const mocks: MocksInterface = {
@@ -241,7 +241,7 @@ export default function setup(): MocksInterface {
         // The message used to announce a draft
         mockMessage: Substitute.for<Message>(),
 
-        mockDataResolver: mockDataResolver,
+        mockResolver: mockResolver,
 
         createMockUserView: () => buildUserView()
     };
@@ -262,12 +262,12 @@ export default function setup(): MocksInterface {
     mockSession.getCancelledMessage().returns(mockSessionParameters.sessionCancelMessage);
 
 
-    mockDataResolver.env.returns(mockEnv);
-    mockDataResolver.resolveUser(Arg.any()).mimicks((userId: DraftUserId) => generatedUsers[userId]);
-    mockDataResolver.resolveSession(Arg.any()).mimicks((sessionId: SessionId) => sessionId === SESSION_ID ? mockSession : null);
+    mockResolver.env.returns(mockEnv);
+    mockResolver.resolveUser(Arg.any()).mimicks((userId: DraftUserId) => generatedUsers[userId]);
+    mockResolver.resolveSession(Arg.any()).mimicks((sessionId: SessionId) => sessionId === SESSION_ID ? mockSession : null);
 
     const mockDiscordResolver = Substitute.for<DiscordResolver>();
-    mockDataResolver.discordResolver.returns(mockDiscordResolver);
+    mockResolver.discordResolver.returns(mockDiscordResolver);
     mockDiscordResolver.resolveUser(Arg.any()).mimicks(id => generatedDiscordUsers[id]);
     mockDiscordResolver.resolveUserAsync(Arg.any()).mimicks(async id => generatedDiscordUsers[id]);
     mockDiscordResolver.resolveGuildMember(Arg.any()).mimicks(id => generatedGuildMembers[id]);

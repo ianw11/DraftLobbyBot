@@ -12,7 +12,7 @@ export default class EditSessionCommand implements Command {
             throw new Error("Unable to modify session - you haven't created one yet");
         }
 
-        const session = context.dataResolver.resolveSession(sessionId);
+        const session = context.resolver.resolveSession(sessionId);
         if (!session) {
             throw new Error("SessionId found but resolver failed to find the Session");
         }

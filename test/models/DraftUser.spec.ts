@@ -20,7 +20,7 @@ let userData: IUserView;
 beforeEach(() => {
     mocks = setup();
     userData = mocks.mockUserView;
-    user = new DraftUser(userData, mocks.mockDataResolver);
+    user = new DraftUser(userData, mocks.mockResolver);
 });
 afterEach(() => {
     // None for now...
@@ -35,7 +35,7 @@ describe('Basic User Tests (Probably canaries in the coal mine)', () => {
     it('should know its username', () => {
         expect(user.getDisplayName()).to.equal(constants.NICKNAME);
 
-        const noNicknameUser = new DraftUser(mocks.createMockUserView(), mocks.mockDataResolver);
+        const noNicknameUser = new DraftUser(mocks.createMockUserView(), mocks.mockResolver);
         expect(noNicknameUser.getDisplayName()).to.equal(constants.USERNAME);
     });
     it('sends a DM successfully', async () => {

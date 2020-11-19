@@ -5,7 +5,7 @@ import DraftServer from './models/DraftServer';
 import Session from './models/Session';
 import DraftUser from './models/DraftUser';
 import Context, { ContextProps } from './commands/models/Context';
-import { DataResolver, DiscordResolver } from './models/types/ResolverTypes';
+import { Resolver, DiscordResolver } from './models/types/ResolverTypes';
 import { LowdbDriver } from './database/lowdb/LowdbDriver';
 import { DBDriver } from './database/DBDriver';
 import { InMemoryDriver } from './database/inmemory/InMemoryDriver';
@@ -23,8 +23,8 @@ const SERVERS: {[guildId: string]: DraftServer} = {};
 // DATA LAYER //
 ////////////////
 
-function getDataResolver(guild: Guild, env: ENV, dbDriver: DBDriver): DataResolver {
-    return new DataResolver(new DiscordResolver(guild, env), dbDriver);
+function getResolver(guild: Guild, env: ENV, dbDriver: DBDriver): Resolver {
+    return new Resolver(new DiscordResolver(guild, env), dbDriver);
 }
 
 ///////////////////////////////////////////
@@ -39,7 +39,7 @@ async function outputError(e: Error, user: User | PartialUser, env: ENV) {
 function getDraftServer(guild: Guild, env: ENV, dbDriver: DBDriver): DraftServer {
     let server = SERVERS[guild.id];
     if (!server) {
-        server = new DraftServer(env, getDataResolver(guild, env, dbDriver));
+        server = new DraftServer(env, getResolver(guild, env, dbDriver));
         SERVERS[guild.id] = server;
     }
     return server;
@@ -135,7 +135,7 @@ function onReaction(env: ENV, dbDriver: DBDriver, callback: ReactionCallback): C
             const [draftServer, session] = getServerAndSession(reaction, env, dbDriver);
 
             if (session) {
-                const draftUser = draftServer.dataResolver.resolveUser(rawUser.id);
+                const draftUser = draftServer.resolver.resolveUser(rawUser.id);
                 await callback(draftUser, session);
             }
         } catch (e) {

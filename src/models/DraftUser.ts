@@ -1,4 +1,4 @@
-import { DataResolver } from "./types/ResolverTypes";
+import { Resolver } from "./types/ResolverTypes";
 import Session from "./Session";
 import { User, DMChannel, MessageEmbed, GuildMember } from "discord.js";
 import { IUserView } from "../database/UserDBSchema";
@@ -6,14 +6,14 @@ import { DraftUserId, SessionId } from "./types/BaseTypes";
 
 export default class DraftUser {
     private readonly data: IUserView;
-    private readonly dataResolver: DataResolver;
+    private readonly resolver: Resolver;
 
     // Computed then cached for use in sendDM
     private dmChannel?: DMChannel = undefined;
 
-    constructor(data: IUserView, dataResolver: DataResolver) {
+    constructor(data: IUserView, resolver: Resolver) {
         this.data = data;
-        this.dataResolver = dataResolver;
+        this.resolver = resolver;
     }
 
     getUserId(): DraftUserId {
@@ -87,7 +87,7 @@ export default class DraftUser {
 
         const callback = (includePlace: boolean) => {
             return (sessionId: SessionId) => {
-                const session = this.dataResolver.resolveSession(sessionId);
+                const session = this.resolver.resolveSession(sessionId);
 
                 msg += `- ${session.toSimpleString()}`;
                 if (includePlace) {
@@ -112,7 +112,7 @@ export default class DraftUser {
             await this.sendDM("Cannot send info - you haven't created a session");
             return;
         }
-        const session = this.dataResolver.resolveSession(this.data.createdSessionId);
+        const session = this.resolver.resolveSession(this.data.createdSessionId);
 
         await this.sendEmbedDM(session.getEmbed(true));
     }
@@ -141,14 +141,14 @@ export default class DraftUser {
     }
 
     private getDiscordUser(): User | undefined {
-        return this.dataResolver.discordResolver.resolveUser(this.data.userId);
+        return this.resolver.discordResolver.resolveUser(this.data.userId);
     }
 
     private getDiscordUserAsync(): Promise<User> {
-        return this.dataResolver.discordResolver.resolveUserAsync(this.data.userId);
+        return this.resolver.discordResolver.resolveUserAsync(this.data.userId);
     }
 
     private getDiscordGuildMember(): GuildMember | null {
-        return this.dataResolver.discordResolver.resolveGuildMember(this.data.userId);
+        return this.resolver.discordResolver.resolveGuildMember(this.data.userId);
     }
 }
