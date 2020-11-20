@@ -30,6 +30,7 @@ of the larger MocksInterface
 /////////////////////////
 
 export interface MocksConstants {
+    DISCORD_SERVER_ID: string,
     DISCORD_USER_ID: string,
     USERNAME: string,
     NICKNAME: string,
@@ -41,6 +42,7 @@ export interface MocksConstants {
 }
 // Export the constants
 export const mockConstants: MocksConstants = {
+    DISCORD_SERVER_ID: 'TEST SERVER ID',
     DISCORD_USER_ID: 'TEST DISCORD USER ID',
     USERNAME: 'TEST USERNAME',
     NICKNAME: 'TEST NICKNAME',
@@ -98,9 +100,9 @@ beforeEach(() => {
 
 function buildUserView(_id?: string, nickname?: string): IUserView {
     const id = _id || `USER_VIEW_MOCK_${idGenerator.next().value}`;
-    const {USERNAME} = mockConstants;
+    const {DISCORD_SERVER_ID, USERNAME} = mockConstants;
     buildMockDiscordUser(id, USERNAME, nickname);
-    return new InMemoryUserView(id);
+    return new InMemoryUserView(DISCORD_SERVER_ID, id);
 }
 
 function buildMockDiscordUser(id: string, username: string, nickname?: string, tag?: string): SubstituteOf<User> {
@@ -201,7 +203,7 @@ export default function setup(): MocksInterface {
         return builtMocks;
     }
 
-    const {SESSION_ID, NUM_CONFIRMED, NUM_IN_WAITLIST, DISCORD_USER_ID, USERNAME, NICKNAME, TAG} = mockConstants;
+    const {DISCORD_SERVER_ID, SESSION_ID, NUM_CONFIRMED, NUM_IN_WAITLIST, DISCORD_USER_ID, USERNAME, NICKNAME, TAG} = mockConstants;
 
     const mockResolver = Substitute.for<Resolver>();
 
@@ -226,7 +228,7 @@ export default function setup(): MocksInterface {
         },
         mockSession: Substitute.for<Session>(),
 
-        mockUserView: new InMemoryUserView(DISCORD_USER_ID),
+        mockUserView: new InMemoryUserView(DISCORD_SERVER_ID, DISCORD_USER_ID),
 
         // A simple mock to get started
         mockDraftUser: generateCustomUser(),

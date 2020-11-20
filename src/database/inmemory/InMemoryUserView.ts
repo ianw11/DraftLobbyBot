@@ -1,8 +1,9 @@
-import { DraftUserId, SessionId } from "../../models/types/BaseTypes";
+import { DraftUserId, ServerId, SessionId } from "../../models/types/BaseTypes";
 import { removeFromArray } from "../../Utils";
 import { IUserView } from "../UserDBSchema";
 
 export class InMemoryUserView implements IUserView {
+    readonly serverId;
     readonly userId;
 
     joinedSessionIds: SessionId[] = [];
@@ -10,7 +11,8 @@ export class InMemoryUserView implements IUserView {
 
     createdSessionId?: SessionId;
 
-    constructor(userId: DraftUserId) {
+    constructor(serverId: ServerId, userId: DraftUserId) {
+        this.serverId = serverId;
         this.userId = userId;
     }
 

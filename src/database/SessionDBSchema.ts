@@ -1,5 +1,20 @@
-import { buildDefaultSessionParameters, ENV } from "../env/env";
-import { DraftUserId, SessionId } from "../models/types/BaseTypes";
+import { ENV } from "../env/env";
+import { DraftUserId, ServerId, SessionId } from "../models/types/BaseTypes";
+
+function buildDefaultSessionParameters(env: ENV): TemplateAndDBSessionParameters {
+    return {
+        name: env.DEFAULT_SESSION_NAME,
+        unownedSessionName: env.DEFAULT_UNOWNED_SESSION_NAME,
+        sessionCapacity: env.DEFAULT_SESSION_CAPACITY,
+        description: env.DEFAULT_SESSION_DESCRIPTION,
+        fireWhenFull: env.DEFAULT_SESSION_FIRE_WHEN_FULL,
+
+        sessionConfirmMessage: env.DEFAULT_SESSION_CONFIRM_MESSAGE,
+        sessionWaitlistMessage: env.DEFAULT_SESSION_WAITLIST_MESSAGE,
+        sessionCancelMessage: env.DEFAULT_SESSION_CANCELLED_MESSAGE,
+        templateUrl: env.DEFAULT_TEMPLATE_URL
+    };
+}
 
 export function buildSessionParams(env: ENV, params?: SessionConstructorParameter): SessionParametersWithSugar {
     return {
@@ -12,6 +27,7 @@ export function buildSessionParams(env: ENV, params?: SessionConstructorParamete
     This interface is what defines the database
 */
 export interface SessionDBSchema {
+    readonly serverId: ServerId;
     readonly sessionId: SessionId;
 
     ownerId?: DraftUserId;
@@ -49,7 +65,7 @@ export interface TemplateAndDBSessionParameters {
 
 /*
     This interface ALSO exists in the database and is an extension of TemplateSessionParameters and act _like_ parameters...
-    BUT the interface is not exposed (is private to this file) so it can't be overridden by ENV/config files
+    BUT the interface is not exposed/exported (is private to this file) so it can't be overridden by ENV/config files
 */
 interface GeneratedSessionParameters {
     _generatedUrl?: string;

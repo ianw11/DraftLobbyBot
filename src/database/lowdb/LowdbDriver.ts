@@ -6,7 +6,7 @@ import { DBDriver, DBDriverBase } from '../DBDriver';
 import { IUserView, UserDBSchema } from '../UserDBSchema';
 import { ISessionView, SessionDBSchema, SessionConstructorParameter } from '../SessionDBSchema';
 import { ENV } from '../../env/env';
-import { DraftUserId, SessionId } from '../../models/types/BaseTypes';
+import { DraftUserId, ServerId, SessionId } from '../../models/types/BaseTypes';
 
 type DBSchema = {
     Sessions: Array<SessionDBSchema>;
@@ -31,35 +31,35 @@ export class LowdbDriver extends DBDriverBase implements DBDriver {
         }).write();
     }
 
-    getOrCreateUserView(userId: DraftUserId): IUserView {
+    getOrCreateUserView(serverId: ServerId, userId: DraftUserId): IUserView {
         const users = this.db.get("Users");
-        const cursor = users.find({userId: userId});
+        const cursor = users.find({userId: userId, serverId: serverId});
         if (!cursor.value()) {
-            users.push(this.buildUserFromScratch(userId)).write();
+            users.push(this.buildUserFromScratch(serverId, userId)).write();
         }
     
         return new LowdbUserView(cursor);
     }
 
-    deleteUserFromDatabase(userId: DraftUserId): void {
-        this.db.get("Users").remove({userId: userId}).write();
+    deleteUserFromDatabase(serverId: ServerId, userId: DraftUserId): void {
+        this.db.get("Users").remove({userId: userId, serverId: serverId}).write();
     }
 
-    createSession(sessionId: SessionId, env: ENV, params?: SessionConstructorParameter): ISessionView {
+    createSession(serverId: ServerId, sessionId: SessionId, env: ENV, params?: SessionConstructorParameter): ISessionView {
         const sessions = this.db.get("Sessions");
         const cursor = sessions.find({sessionId: sessionId});
         if (cursor.value()) {
             throw new Error("Session with provided id already exists!");
         }
     
-        sessions.push(this.buildSessionFromTemplate(sessionId, env, params)).write();
+        sessions.push(this.buildSessionFromTemplate(serverId, sessionId, env, params)).write();
     
         return new LowdbSessionView(cursor);
     }
 
-    getSessionView(sessionId: SessionId): ISessionView {
+    getSessionView(serverId: ServerId, sessionId: SessionId): ISessionView {
         const sessions = this.db.get("Sessions");
-        const cursor = sessions.find({sessionId: sessionId});
+        const cursor = sessions.find({sessionId: sessionId, serverId: serverId});
     
         if (!cursor.value()) {
             throw new Error("Could not find session with provided id");
@@ -68,7 +68,7 @@ export class LowdbDriver extends DBDriverBase implements DBDriver {
         return new LowdbSessionView(cursor);
     }
 
-    deleteSessionFromDatabase(sessionId: SessionId): void {
-        this.db.get("Sessions").remove({sessionId: sessionId}).write();
+    deleteSessionFromDatabase(serverId: ServerId, sessionId: SessionId): void {
+        this.db.get("Sessions").remove({sessionId: sessionId, serverId: serverId}).write();
     }
 }

@@ -1,6 +1,7 @@
-import { DraftUserId, SessionId } from "../models/types/BaseTypes";
+import { DraftUserId, ServerId, SessionId } from "../models/types/BaseTypes";
 
 export interface UserDBSchema {
+    readonly serverId: ServerId;
     readonly userId: DraftUserId;
 
     readonly joinedSessionIds: Array<SessionId>;

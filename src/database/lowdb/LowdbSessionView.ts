@@ -1,5 +1,4 @@
-
-import { DraftUserId, SessionId } from "../../models/types/BaseTypes";
+import { DraftUserId, ServerId, SessionId } from "../../models/types/BaseTypes";
 import { ISessionView, SessionDBSchema, SessionParametersDB, SessionParametersWithSugar } from "../SessionDBSchema";
 import { LowDbViewBase, ObjectChain } from "./LowdbViewBase";
 
@@ -39,6 +38,10 @@ export class LowdbSessionView extends LowDbViewBase<SessionDBSchema> implements 
     }
     getNumWaitlisted(): number {
         return this.waitlistedPlayerIds.length;
+    }
+
+    get serverId(): ServerId {
+        return this.getString('serverId');
     }
 
     get sessionId(): SessionId {

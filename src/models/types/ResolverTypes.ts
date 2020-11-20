@@ -3,11 +3,11 @@ import Session from "../Session";
 import { Channel, Guild, GuildChannel, GuildMember, Message, TextChannel, User } from 'discord.js';
 import { DBDriver } from "../../database/DBDriver";
 import { ENV } from "../../env/env";
-import { DraftUserId, SessionId } from "./BaseTypes";
+import { DraftUserId, ServerId, SessionId } from "./BaseTypes";
 
 export class DiscordResolver {
     readonly guild;
-    announcementChannel /* : TextChannel */;
+    announcementChannel?: TextChannel;
     readonly env;
 
     constructor(guild: Guild, env: ENV) {
@@ -44,7 +44,7 @@ export class DiscordResolver {
 
     async resolveMessageInAnnouncementChannel(messageId: string): Promise<Message | undefined> {
         if (!this.announcementChannel) {
-            throw new Error("Text Channel not attached - unable to resolveMessage");
+            throw new Error("Text Channel not attached - unable to resolveMessage.  If the server just came online, maybe try one more time in 10-15 seconds");
         }
         return await this.resolveMessage(this.announcementChannel.id, messageId);
     }
@@ -117,11 +117,15 @@ export class Resolver {
         this.dbDriver = dbDriver;
     }
 
+    get serverId(): ServerId {
+        return this.discordResolver.guild.id;
+    }
+
     resolveUser(userId: DraftUserId): DraftUser {
-        return new DraftUser(this.dbDriver.getOrCreateUserView(userId), this);
+        return new DraftUser(this.dbDriver.getOrCreateUserView(this.serverId, userId), this);
     }
 
     resolveSession(sessionId: SessionId): Session {
-        return new Session(this.dbDriver.getSessionView(sessionId), this, this.env);
+        return new Session(this.dbDriver.getSessionView(this.serverId, sessionId), this);
     }
 }

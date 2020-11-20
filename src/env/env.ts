@@ -1,13 +1,12 @@
-import { TemplateAndDBSessionParameters } from "../database/SessionDBSchema";
+import ENV, {DEFAULTS} from './EnvBase';
 import { replaceFromDict } from "../Utils";
 
-import ENV, {DEFAULTS} from './EnvBase';
 const ENV_JSON_FILE_LOCATION = '../../config/env.json'; // Edit this if needed
 
 let ENV_JSON = { DISCORD_BOT_TOKEN: "NO_BOT_TOKEN_PROVIDED" };
 try {
     ENV_JSON = require(ENV_JSON_FILE_LOCATION);
-    if (!ENV_JSON.DISCORD_BOT_TOKEN) {
+    if (!ENV_JSON.DISCORD_BOT_TOKEN || ENV_JSON.DISCORD_BOT_TOKEN === "NO_BOT_TOKEN_PROVIDED") {
         throw new Error("config/env.json MUST define DISCORD_BOT_TOKEN - ensure the field is defined");
     }
 } catch (e) {
@@ -40,21 +39,6 @@ export default env;
 
 // Re-export the type so this file is the only required import
 export {ENV};
-
-export const buildDefaultSessionParameters = (env: ENV): TemplateAndDBSessionParameters => {
-    return {
-        name: env.DEFAULT_SESSION_NAME,
-        unownedSessionName: env.DEFAULT_UNOWNED_SESSION_NAME,
-        sessionCapacity: env.DEFAULT_SESSION_CAPACITY,
-        description: env.DEFAULT_SESSION_DESCRIPTION,
-        fireWhenFull: env.DEFAULT_SESSION_FIRE_WHEN_FULL,
-
-        sessionConfirmMessage: env.DEFAULT_SESSION_CONFIRM_MESSAGE,
-        sessionWaitlistMessage: env.DEFAULT_SESSION_WAITLIST_MESSAGE,
-        sessionCancelMessage: env.DEFAULT_SESSION_CANCELLED_MESSAGE,
-        templateUrl: env.DEFAULT_TEMPLATE_URL
-    };
-}
 
 /**
  * Allows strings defined in 

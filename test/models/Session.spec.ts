@@ -22,7 +22,7 @@ beforeEach(() => {
 
 function resetSession(overrideSessionParameters?: Partial<SessionConstructorParameter>) {
     const sessionParams: SessionParametersWithSugar = buildSessionParams(mockEnv, {...mocks.mockSessionParameters, ...(overrideSessionParameters || {})});
-    session = new Session(new InMemorySessionView(mockConstants.SESSION_ID, sessionParams, mockConstants.DISCORD_USER_ID), mocks.mockResolver, mockEnv);
+    session = new Session(new InMemorySessionView(mockConstants.DISCORD_SERVER_ID, mockConstants.SESSION_ID, sessionParams, mockConstants.DISCORD_USER_ID), mocks.mockResolver);
 }
 
 describe("Basic Session Checks", () => {

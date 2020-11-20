@@ -16,9 +16,6 @@ import { InMemoryDriver } from './database/inmemory/InMemoryDriver';
 
 // Join Link: https://discord.com/api/oauth2/authorize?client_id={YOUR_CLIENT_ID}&scope=bot&permissions=133200
 
-// TODO: This needs to be moved to a persistence layer
-const SERVERS: {[guildId: string]: DraftServer} = {};
-
 ////////////////
 // DATA LAYER //
 ////////////////
@@ -27,25 +24,11 @@ function getResolver(guild: Guild, env: ENV, dbDriver: DBDriver): Resolver {
     return new Resolver(new DiscordResolver(guild, env), dbDriver);
 }
 
-///////////////////////////////////////////
-// Helper Methods for the Discord client //
-///////////////////////////////////////////
-
-async function outputError(e: Error, user: User | PartialUser, env: ENV) {
-    console.log(e);
-    await (await user.createDM()).send(env.ERROR_OUTPUT.replace("%s", e.message))
-}
-
 function getDraftServer(guild: Guild, env: ENV, dbDriver: DBDriver): DraftServer {
-    let server = SERVERS[guild.id];
-    if (!server) {
-        server = new DraftServer(env, getResolver(guild, env, dbDriver));
-        SERVERS[guild.id] = server;
-    }
-    return server;
+    return new DraftServer(env, getResolver(guild, env, dbDriver));
 }
 
-function getServerAndSession(reaction: MessageReaction, env: ENV, dbDriver: DBDriver): [DraftServer, Session|null] {
+function getServerAndSession(reaction: MessageReaction, env: ENV, dbDriver: DBDriver): [DraftServer, Session?] {
     const {message} = reaction;
 
     const {guild} = message;
@@ -56,7 +39,16 @@ function getServerAndSession(reaction: MessageReaction, env: ENV, dbDriver: DBDr
     const draftServer = getDraftServer(guild, env, dbDriver);
     const session = draftServer.getSessionFromMessage(message);
 
-    return session ? [draftServer, session] : [draftServer, null];
+    return [draftServer, session];
+}
+
+///////////////////////////////////////////
+// Helper Methods for the Discord client //
+///////////////////////////////////////////
+
+async function outputError(e: Error, user: User | PartialUser, env: ENV) {
+    console.log(e);
+    await (await user.createDM()).send(env.ERROR_OUTPUT.replace("%s", e.message))
 }
 
 function onMessage(client: Client, env: ENV, dbDriver: DBDriver) {

@@ -1,4 +1,4 @@
-import { DraftUserId, SessionId } from "../../models/types/BaseTypes";
+import { DraftUserId, ServerId, SessionId } from "../../models/types/BaseTypes";
 import { removeFromArray } from "../../Utils";
 import { ISessionView, SessionParametersWithSugar } from "../SessionDBSchema";
 
@@ -8,10 +8,12 @@ export class InMemorySessionView implements ISessionView {
     sessionClosed = false;
 
     sessionParameters: SessionParametersWithSugar;
-    sessionId: string;
+    readonly serverId: ServerId;
+    sessionId: SessionId;
     ownerId?: DraftUserId;
 
-    constructor(sessionId: SessionId, params: SessionParametersWithSugar, ownerId?: DraftUserId) {
+    constructor(serverId: ServerId, sessionId: SessionId, params: SessionParametersWithSugar, ownerId?: DraftUserId) {
+        this.serverId = serverId;
         this.sessionId = sessionId;
         this.ownerId = ownerId;
         this.sessionParameters = params;

@@ -4,7 +4,7 @@ import Session from "./Session";
 import DraftUser from "./DraftUser";
 import { Message } from "discord.js";
 import { SessionInjectedParameters, SessionParametersWithSugar } from '../database/SessionDBSchema';
-import { SessionId } from './types/BaseTypes';
+import { ServerId, SessionId } from './types/BaseTypes';
 
 export default class DraftServer {
 
@@ -36,7 +36,7 @@ export default class DraftServer {
         const injectedParameters: SessionInjectedParameters = {
             ownerId: draftUser.getUserId()
         }
-        this.resolver.dbDriver.createSession(sessionId, this.env, {...(parameters||{}), ...injectedParameters});
+        this.resolver.dbDriver.createSession(this.serverId, sessionId, this.env, {...(parameters||{}), ...injectedParameters});
         const session = this.resolver.resolveSession(sessionId);
         
         // Add the creator to their Session
@@ -47,7 +47,7 @@ export default class DraftServer {
         await message.react(this.env.EMOJI);
     }
 
-    get serverId(): string {
+    get serverId(): ServerId {
         return this.resolver.discordResolver.guild.id;
     }
 
@@ -69,7 +69,7 @@ export default class DraftServer {
         if (session) {
             await session.terminate(started);
             if (session.sessionId) {
-                this.resolver.dbDriver.deleteSessionFromDatabase(session.sessionId);
+                this.resolver.dbDriver.deleteSessionFromDatabase(this.serverId, session.sessionId);
             }
         }
         
@@ -87,12 +87,17 @@ export default class DraftServer {
         // announcement channel.  However, to do so we need to have already hooked up to
         // the announcement channel so this is still flaky.
 
-        if (!this.resolver.discordResolver.announcementChannel) {
+        // TODO: DETERMINE IF THE ABOVE COMMENT STILL NEEDS TO APPLY
+
+        /*
+        const announcementChannel = this.resolver.discordResolver.announcementChannel;
+        if (!announcementChannel) {
             throw new Error("Bot was not properly set up with an announcement channel - probably requires a restart");
         }
-        if (message.channel.id !== this.resolver.discordResolver.announcementChannel.id) {
+        if (message.channel.id !== announcementChannel.id) {
             return;
         }
+        */
 
         return this.resolver.resolveSession(message.id);
     }

@@ -6,14 +6,14 @@ import { DBDriver } from "../../src/database/DBDriver";
 
 let driver: DBDriver;
 let data: IUserView;
-const { DISCORD_USER_ID } = mockConstants;
+const { DISCORD_SERVER_ID, DISCORD_USER_ID } = mockConstants;
 beforeEach(() => {
     driver = new LowdbDriver();
-    data = driver.getOrCreateUserView(DISCORD_USER_ID);
+    data = driver.getOrCreateUserView(DISCORD_SERVER_ID, DISCORD_USER_ID);
 });
 
 afterEach(() => {
-    driver.deleteUserFromDatabase(DISCORD_USER_ID);
+    driver.deleteUserFromDatabase(DISCORD_SERVER_ID, DISCORD_USER_ID);
 });
 
 describe("can read and write from db", () => {
@@ -59,5 +59,6 @@ describe("can read and write from db", () => {
 
     it("should be a blank object again", () => {
         expect(data.joinedSessionIds.length).eq(0);
+        expect(data.waitlistedSessionIds.length).eq(0);
     })
 });

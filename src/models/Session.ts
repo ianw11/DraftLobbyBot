@@ -1,4 +1,3 @@
-import {ENV} from '../env/env';
 import { MessageEmbed, EmbedFieldData } from "discord.js";
 import DraftUser from "./DraftUser";
 import { replaceFromDict, asyncForEach } from "../Utils";
@@ -12,12 +11,10 @@ const hri = require("human-readable-ids").hri; // JS Library
 export default class Session {
     private readonly data: ISessionView;
     private readonly resolver: Resolver;
-    private readonly env: ENV;
 
-    constructor (data: ISessionView, resolver: Resolver, env: ENV) {
+    constructor (data: ISessionView, resolver: Resolver) {
         this.data = data;
         this.resolver = resolver;
-        this.env = env;
     }
 
     /////////////////////////
@@ -257,7 +254,7 @@ export default class Session {
         if (message) {
             await message.delete();
         } else {
-            this.env.log("Unable to delete message - not found in channel");
+            this.resolver.env.log("Unable to delete message - not found in channel");
         }
     }
 
@@ -352,7 +349,7 @@ export default class Session {
         } else {
             fields.push({
                 name: "How to join",
-                value: `Simply react to this message using ${this.env.EMOJI} and I'll tell you if you're confirmed or just on the waitlist`
+                value: `Simply react to this message using ${this.resolver.env.EMOJI} and I'll tell you if you're confirmed or just on the waitlist`
             });
         }
 

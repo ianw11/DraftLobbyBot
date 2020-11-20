@@ -1,4 +1,4 @@
-import { DraftUserId, SessionId } from "../../models/types/BaseTypes";
+import { DraftUserId, ServerId, SessionId } from "../../models/types/BaseTypes";
 import { IUserView, UserDBSchema } from "../UserDBSchema";
 import { ObjectChain } from "./LowdbViewBase";
 
@@ -8,6 +8,10 @@ export class LowdbUserView implements IUserView {
     
     constructor(cursor: ObjectChain<UserDBSchema>) {
         this.cursor = cursor;
+    }
+
+    get serverId(): ServerId {
+        return this.cursor.get('serverId').value();
     }
 
     get userId(): DraftUserId {
