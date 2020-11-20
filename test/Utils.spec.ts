@@ -155,14 +155,14 @@ describe('test asyncForEach (this could take up to 2 seconds)', () => {
         expect(outerArr).deep.equals(expected);
     });
     it('Executes all callbacks even if one rejects', async () => {
-        const input = [0, 1, 2, 3];
-        const expectedOutput = [1, 2];
+        const input = [0, 1, 2, 3, 4, 3];
+        const expectedOutput = [1, 2, 4];
         const output = [];
         let rejectCount = 0;
-        const callback = async (elem: number, ndx: number) => {
-            if (ndx === 0 || ndx === 3) {
+        const callback = async (elem: number) => {
+            if (elem === 0 || elem === 3) {
                 ++rejectCount;
-                throw new Error(`This should be thrown ${ndx}`);
+                throw new Error(`This should be thrown ${elem}`);
             } else {
                 output.push(elem);
             }
@@ -178,7 +178,7 @@ describe('test asyncForEach (this could take up to 2 seconds)', () => {
 
         await expect(asyncForEach(input, callback)).is.rejectedWith('This should be thrown 0');
         expect(expectedOutput).deep.equals(output);
-        expect(rejectCount).equals(2);
+        expect(rejectCount).equals(3);
     });
 });
 

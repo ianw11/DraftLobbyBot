@@ -1,6 +1,6 @@
 import Substitute, { SubstituteOf, Arg } from "@fluffy-spoon/substitute";
 import DraftServer from "../src/models/DraftServer";
-import { DMChannel, User, Message, Client, TextChannel, GuildMember } from "discord.js";
+import { DMChannel, User, Message, TextChannel, GuildMember } from "discord.js";
 import DraftUser from "../src/models/DraftUser";
 import ENV, { DEFAULTS, ShallowEnvRequiredFields } from "../src/env/EnvBase";
 import Context from "../src/commands/models/Context";
@@ -131,12 +131,10 @@ function buildMockDiscordGuildMember(id: string, nickname?: string): SubstituteO
 
 // This method is also exported!
 export function buildContext(parameters: string[] = ["NO_PARAMS"]): Context {
-    const client = Substitute.for<Client>();
     const draftServer = Substitute.for<DraftServer>();
     const message = Substitute.for<Message>();
     return new Context({
         env: mockEnv,
-        client: client,
         draftServer: draftServer,
         user: builtMocks.mockDiscordUser,
         parameters: parameters,

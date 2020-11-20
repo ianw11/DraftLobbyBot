@@ -51,20 +51,20 @@ export default class DraftServer {
         return this.resolver.discordResolver.guild.id;
     }
 
-    async startSession(draftUser: DraftUser): Promise<void> {
-        await this.terminateSession(draftUser, true);
+    async startSession(sessionOwner: DraftUser): Promise<void> {
+        await this.terminateSession(sessionOwner, true);
     }
 
-    async closeSession(draftUser: DraftUser): Promise<void> {
-        await this.terminateSession(draftUser);
+    async closeSession(sessionOwner: DraftUser): Promise<void> {
+        await this.terminateSession(sessionOwner);
     }
 
-    private async terminateSession(draftUser: DraftUser, started = false) {
-        if (!draftUser.getCreatedSessionId()) {
+    private async terminateSession(sessionOwner: DraftUser, started = false) {
+        if (!sessionOwner.getCreatedSessionId()) {
             throw new Error("You don't have any session to terminate");
         }
 
-        const session = this.getSessionFromDraftUser(draftUser);
+        const session = this.getSessionFromDraftUser(sessionOwner);
 
         if (session) {
             await session.terminate(started);
@@ -73,7 +73,7 @@ export default class DraftServer {
             }
         }
         
-        draftUser.setCreatedSessionId(undefined);
+        sessionOwner.setCreatedSessionId(undefined);
     }
 
     ////////////////////////

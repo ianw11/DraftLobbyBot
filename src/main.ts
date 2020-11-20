@@ -9,12 +9,15 @@ import { Resolver, DiscordResolver } from './models/types/ResolverTypes';
 import { LowdbDriver } from './database/lowdb/LowdbDriver';
 import { DBDriver } from './database/DBDriver';
 import { InMemoryDriver } from './database/inmemory/InMemoryDriver';
+import { ServerId } from './models/types/BaseTypes';
 
 //
 // To set your Discord Bot Token, take a look at ./env/env.ts for an explanation (hint: make an env.json)
 //
 
 // Join Link: https://discord.com/api/oauth2/authorize?client_id={YOUR_CLIENT_ID}&scope=bot&permissions=133200
+
+const SERVER_CACHE: Record<ServerId, DraftServer> = {};
 
 ////////////////
 // DATA LAYER //
@@ -25,7 +28,13 @@ function getResolver(guild: Guild, env: ENV, dbDriver: DBDriver): Resolver {
 }
 
 function getDraftServer(guild: Guild, env: ENV, dbDriver: DBDriver): DraftServer {
-    return new DraftServer(env, getResolver(guild, env, dbDriver));
+    const serverId = guild.id;
+    let server = SERVER_CACHE[serverId];
+    if (!server) {
+        server = new DraftServer(env, getResolver(guild, env, dbDriver));
+        SERVER_CACHE[serverId] = server;
+    }
+    return server;
 }
 
 function getServerAndSession(reaction: MessageReaction, env: ENV, dbDriver: DBDriver): [DraftServer, Session?] {
@@ -51,7 +60,7 @@ async function outputError(e: Error, user: User | PartialUser, env: ENV) {
     await (await user.createDM()).send(env.ERROR_OUTPUT.replace("%s", e.message))
 }
 
-function onMessage(client: Client, env: ENV, dbDriver: DBDriver) {
+function onMessage(env: ENV, dbDriver: DBDriver) {
     const {DEBUG, PREFIX, log} = env;
 
     return async (message: Message) => {
@@ -61,7 +70,7 @@ function onMessage(client: Client, env: ENV, dbDriver: DBDriver) {
         if (author.bot) return;
         if (DEBUG && content === 'dc') {
             log("Bye bye");
-            client.destroy(); // Ends the Node process too
+            message.client.destroy(); // Ends the Node process too
             return;
         }
         if (message.channel.type == 'dm') {
@@ -72,8 +81,8 @@ function onMessage(client: Client, env: ENV, dbDriver: DBDriver) {
 
         try {
             // Parse out the desired command
-            const split = content.split(' ');
-            let commandStr = split.shift();
+            const params = content.split(' ');
+            let commandStr = params.shift();
             if (!commandStr) {
                 return;
             }
@@ -92,10 +101,9 @@ function onMessage(client: Client, env: ENV, dbDriver: DBDriver) {
                 // Build the props for the Context
                 const props: ContextProps = {
                     env: env,
-                    client: client,
                     draftServer: draftServer,
                     user: author,
-                    parameters: split,
+                    parameters: params,
                     message: message
                 }
 
@@ -177,7 +185,7 @@ export default function main(env: ENV): void {
     client.once('ready', () => {
         env.log("Logged in successfully");
     });
-    client.on('message', onMessage(client, env, dbDriver));
+    client.on('message', onMessage(env, dbDriver));
     client.on('messageReactionAdd', onReaction(env, dbDriver, async (draftUser, session) => await session.addPlayer(draftUser)));
     client.on('messageReactionRemove', onReaction(env, dbDriver, async (draftUser, session) => await session.removePlayer(draftUser)));
 

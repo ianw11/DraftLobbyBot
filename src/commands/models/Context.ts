@@ -1,4 +1,4 @@
-import { Client, User, Message } from "discord.js";
+import { User, Message } from "discord.js";
 import DraftServer from "../../models/DraftServer";
 import ENV from "../../env/EnvBase";
 import DraftUser from "../../models/DraftUser";
@@ -6,7 +6,6 @@ import { Resolver } from "../../models/types/ResolverTypes";
 
 export interface ContextProps {
     env: ENV,
-    client: Client,
     draftServer: DraftServer,
     user: User,
     parameters: string[],
@@ -15,7 +14,6 @@ export interface ContextProps {
 
 export default class Context {
     readonly env: ENV;
-    readonly client: Client;
     readonly draftServer: DraftServer;
     readonly parameters: string[];
     
@@ -24,9 +22,8 @@ export default class Context {
     private readonly user: User;
 
     constructor(props: ContextProps) {
-        const {env, client, draftServer, parameters, message, user} = props;
+        const {env, draftServer, parameters, message, user} = props;
         this.env = env;
-        this.client = client;
         this.draftServer = draftServer;
         this.parameters = parameters;
 

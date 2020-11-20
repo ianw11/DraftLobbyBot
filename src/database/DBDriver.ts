@@ -7,7 +7,7 @@ export interface DBDriver {
     getOrCreateUserView(serverId: ServerId, userId: DraftUserId): IUserView;
     deleteUserFromDatabase(serverId: ServerId, userId: DraftUserId): void;
     createSession(serverId: ServerId, sessionId: SessionId, env: ENV, params?: SessionConstructorParameter): ISessionView;
-    getSessionView(serverId: ServerId,sessionId: SessionId): ISessionView;
+    getSessionView(serverId: ServerId, sessionId: SessionId): ISessionView;
     deleteSessionFromDatabase(serverId: ServerId, sessionId: SessionId): void;
 }
 

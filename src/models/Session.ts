@@ -246,15 +246,17 @@ export default class Session {
 
         // Notify both joined and waitlisted that this Session is closed
         const callback = async (draftUserId: DraftUserId) => await this.resolver.resolveUser(draftUserId).sessionClosed(this, started);
-        await asyncForEach(this.data.joinedPlayerIds, callback);
-        await asyncForEach(this.data.waitlistedPlayerIds, callback);
-
-        const message = await this.resolver.discordResolver.resolveMessageInAnnouncementChannel(this.sessionId);
-        // Clean up the announcement channel a bit
-        if (message) {
-            await message.delete();
-        } else {
-            this.resolver.env.log("Unable to delete message - not found in channel");
+        try {
+            await asyncForEach(this.data.joinedPlayerIds, callback);
+            await asyncForEach(this.data.waitlistedPlayerIds, callback);
+        } finally {
+            const message = await this.resolver.discordResolver.resolveMessageInAnnouncementChannel(this.sessionId);
+            // Clean up the announcement channel a bit
+            if (message) {
+                await message.delete();
+            } else {
+                this.resolver.env.log("Unable to delete message - not found in channel");
+            }
         }
     }
 

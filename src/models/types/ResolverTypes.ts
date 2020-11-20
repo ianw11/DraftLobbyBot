@@ -4,6 +4,7 @@ import { Channel, Guild, GuildChannel, GuildMember, Message, TextChannel, User }
 import { DBDriver } from "../../database/DBDriver";
 import { ENV } from "../../env/env";
 import { DraftUserId, ServerId, SessionId } from "./BaseTypes";
+import { ISessionView } from "../../database/SessionDBSchema";
 
 export class DiscordResolver {
     readonly guild;
@@ -108,17 +109,18 @@ export class Resolver {
 
     readonly discordResolver;
     readonly env: ENV;
-
     readonly dbDriver: DBDriver;
+
+    private readonly serverId: ServerId;
+    private readonly sessionViewPriorityQueue: ISessionView[] = [];
+    private readonly PRIORITY_QUEUE_SIZE = 5;
 
     constructor(discordResolver: DiscordResolver, dbDriver: DBDriver) {
         this.discordResolver = discordResolver;
         this.env = discordResolver.env;
         this.dbDriver = dbDriver;
-    }
 
-    get serverId(): ServerId {
-        return this.discordResolver.guild.id;
+        this.serverId = discordResolver.guild.id;
     }
 
     resolveUser(userId: DraftUserId): DraftUser {
@@ -126,6 +128,30 @@ export class Resolver {
     }
 
     resolveSession(sessionId: SessionId): Session {
-        return new Session(this.dbDriver.getSessionView(this.serverId, sessionId), this);
+        return new Session(this.getSessionViewFromPriorityQueue(sessionId), this);
+    }
+
+    private getSessionViewFromPriorityQueue(sessionId: SessionId): ISessionView {
+        const sessionViewNdx = this.sessionViewPriorityQueue.findIndex(sessView => sessView.sessionId === sessionId);
+
+        let sessionView;
+        // See if this Session already exists in the cache. If so, remove it
+        if (sessionViewNdx !== -1) {
+            sessionView = this.sessionViewPriorityQueue.splice(sessionViewNdx, 1)[0];
+        }
+        // If not in the cache, create a new one
+        if (!sessionView) {
+            sessionView = this.dbDriver.getSessionView(this.serverId, sessionId);
+        }
+
+        // Add to the "most recently used" position
+        this.sessionViewPriorityQueue.push(sessionView);
+        
+        // If we've broken capacity, remove from the "least recently used" position
+        while (this.sessionViewPriorityQueue.length > this.PRIORITY_QUEUE_SIZE) {
+            this.sessionViewPriorityQueue.shift();
+        }
+
+        return sessionView;
     }
 }
