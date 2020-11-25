@@ -106,6 +106,55 @@ export interface ISessionView extends SessionDBSchema {
     getNumWaitlisted(): number;
 }
 
+export class ReadonlySessionView implements ISessionView {
+    readonly schema;
+    constructor(schema: SessionDBSchema) {
+        this.schema = schema;
+    }
+    addToConfirmed(): void {
+        throw new Error('READ-ONLY');
+    }
+    removeFromConfirmed(): void {
+        throw new Error('READ-ONLY');
+    }
+    getNumConfirmed(): number {
+        throw new Error('READ-ONLY');
+    }
+    addToWaitlist(): void {
+        throw new Error('READ-ONLY');
+    }
+    removeFromWaitlist(): void {
+        throw new Error('READ-ONLY');
+    }
+    upgradedFromWaitlist(): void {
+        throw new Error('READ-ONLY');
+    }
+    getNumWaitlisted(): number {
+        throw new Error('READ-ONLY');
+    }
+    get serverId(): string {
+        return this.schema.serverId;
+    }
+    get sessionId(): string {
+        return this.schema.sessionId;
+    }
+    get sessionParameters(): SessionParametersWithSugar {
+        return this.schema.sessionParameters;
+    }
+    get joinedPlayerIds(): string[] {
+        return this.schema.joinedPlayerIds;
+    }
+    get waitlistedPlayerIds(): string[] {
+        return this.schema.waitlistedPlayerIds;
+    }
+    get sessionClosed(): boolean {
+        return this.schema.sessionClosed;
+    }
+    get ownerId(): string|undefined {
+        return this.schema.ownerId;
+    }
+}
+
 /*
     This type is used to allow for additional parameters to be injected to templates when
     constructing a Session.  For now, we only inject the user id of the user who

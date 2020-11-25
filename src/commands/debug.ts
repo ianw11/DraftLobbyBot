@@ -7,16 +7,8 @@ export default class DebugCommand implements Command {
 
     exclude = true;
 
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     async execute(context: Context): Promise<void> {
-        const sessionId = context.draftUser.getCreatedSessionId();
-        if (!sessionId) {
-            return;
-        }
-        const session = context.resolver.resolveSession(sessionId);
-        if (!session) {
-            return;
-        }
-
         // session.broadcast(context.parameters.join(' '));
     }
 }

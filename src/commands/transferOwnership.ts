@@ -1,4 +1,3 @@
-import { Message } from 'discord.js';
 import Command from './models/Command';
 import Context from './models/Context';
 
@@ -23,7 +22,7 @@ export class TransferOwnershipCommand implements Command {
     }
 
     private findUserIdFromMentions(context: Context): string | undefined {
-        const mentionedMembers = (context.message as Message).mentions.members?.array();
+        const mentionedMembers = context.message?.mentions.members?.array();
         if (!mentionedMembers || mentionedMembers.length === 0) {
             return;
         }

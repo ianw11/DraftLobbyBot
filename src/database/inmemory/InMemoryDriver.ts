@@ -7,8 +7,8 @@ import { InMemorySessionView } from "./InMemorySessionView";
 import { InMemoryUserView } from "./InMemoryUserView";
 
 export class InMemoryDriver extends DBDriverBase implements DBDriver {
-    private readonly serverUsers: Record<ServerId, Record<DraftUserId, IUserView | undefined>> = {};
-    private readonly serverSessions: Record<ServerId, Record<SessionId, ISessionView | undefined>> = {};
+    private readonly serverUsers: Record<ServerId, Record<DraftUserId, IUserView>> = {};
+    private readonly serverSessions: Record<ServerId, Record<SessionId, ISessionView>> = {};
 
     getOrCreateUserView(serverId: ServerId, userId: DraftUserId): IUserView {
         let server = this.serverUsers[serverId];
@@ -24,10 +24,19 @@ export class InMemoryDriver extends DBDriverBase implements DBDriver {
         return view;
     }
 
+    getAllUsersFromServer(serverId: ServerId): IUserView[] {
+        const server = this.serverUsers[serverId];
+        if (server) {
+            return Object.values(server);
+        }
+
+        return [];
+    }
+
     deleteUserFromDatabase(serverId: ServerId, userId: DraftUserId): void {
         const server = this.serverUsers[serverId];
         if (server) {
-            server[userId] = undefined;
+            delete server[userId];
         }
     }
 
@@ -57,7 +66,15 @@ export class InMemoryDriver extends DBDriverBase implements DBDriver {
     deleteSessionFromDatabase(serverId: ServerId, sessionId: SessionId): void {
         const server = this.serverSessions[serverId];
         if (server) {
-            server[sessionId] = undefined;
+            delete server[sessionId];
         }
+    }
+
+    getAllSessions(): ISessionView[] {
+        const sessions: ISessionView[] = [];
+        Object.keys(this.serverSessions).forEach((serverId) => Object.keys(this.serverSessions[serverId]).forEach((sessionId) => {
+            sessions.push(this.serverSessions[serverId][sessionId]);
+        }));
+        return sessions;
     }
 }

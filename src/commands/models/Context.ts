@@ -1,4 +1,4 @@
-import { User, Message } from "discord.js";
+import { Message, User } from "discord.js";
 import DraftServer from "../../models/DraftServer";
 import ENV from "../../env/EnvBase";
 import DraftUser from "../../models/DraftUser";
@@ -16,13 +16,13 @@ export default class Context {
     readonly env: ENV;
     readonly draftServer: DraftServer;
     readonly parameters: string[];
-    
-    readonly message?: Message; // Likely only to be used for debug purposes
+
+    readonly message?: Message;
 
     private readonly user: User;
 
     constructor(props: ContextProps) {
-        const {env, draftServer, parameters, message, user} = props;
+        const {env, draftServer, parameters, user, message} = props;
         this.env = env;
         this.draftServer = draftServer;
         this.parameters = parameters;

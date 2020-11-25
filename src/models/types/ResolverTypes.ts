@@ -1,6 +1,6 @@
 import DraftUser from "../DraftUser";
 import Session from "../Session";
-import { Channel, Guild, GuildChannel, GuildMember, Message, TextChannel, User } from 'discord.js';
+import { Guild, GuildChannel, GuildMember, Message, TextChannel, User } from 'discord.js';
 import { DBDriver } from "../../database/DBDriver";
 import { ENV } from "../../env/env";
 import { DraftUserId, ServerId, SessionId } from "./BaseTypes";
@@ -51,33 +51,34 @@ export class DiscordResolver {
     }
 
     async resolveMessage(channelId: string, messageId: string): Promise<Message | undefined> {
-        const channel = this.guild.channels.resolve(channelId);
-        if (!channel || channel.type !== 'text') {
+        const guildChannel: GuildChannel | null = this.guild.channels.resolve(channelId);
+        if (!guildChannel || guildChannel.type !== 'text') {
             return undefined;
         }
+        const channel = guildChannel as TextChannel;
         
         // First attempt to read from the locally cached messages
-        const message = (channel as TextChannel).messages.resolve(messageId);
+        const message = channel.messages.resolve(messageId);
         if (message) {
             return message;
         }
 
         // If not local, attempt to fetch from discord
-        this.env.log("Cache miss - fetching message from Discord");
-        const messages = await (channel as TextChannel).messages.fetch({
+        const messages = await channel.messages.fetch({
             around: messageId,
             limit: 1
         });
         return messages.get(messageId);
     }
 
-    createChannel(channelName: string): Promise<Channel> {
-        return this.guild.channels.create(channelName);
+    private createChannel(channelName: string): Promise<TextChannel> {
+        return this.guild.channels.create(channelName, {
+            type: 'text'
+        });
     }
 
     private findAnnouncementChannel(env: ENV): TextChannel | undefined {
-        const guild = this.guild;
-        const {channels, name: guildName} = guild;
+        const {channels, name: guildName} = this.guild;
         const {DRAFT_CHANNEL_NAME, log} = env;
 
         let announcementChannel;
@@ -93,11 +94,9 @@ export class DiscordResolver {
             }
         });
 
-        if (announcementChannel) {
-            log(`${guildName} already has a channel`);
-        } else {
+        if (!announcementChannel) {
             log(`Creating announcement channel for ${guildName}`);
-            guild.channels.create(DRAFT_CHANNEL_NAME).then((channel) => {
+            this.createChannel(DRAFT_CHANNEL_NAME).then((channel) => {
                 this.announcementChannel = channel
             });
         }
@@ -112,6 +111,8 @@ export class Resolver {
     readonly dbDriver: DBDriver;
 
     private readonly serverId: ServerId;
+
+    // Priority Queue
     private readonly sessionViewPriorityQueue: ISessionView[] = [];
     private readonly PRIORITY_QUEUE_SIZE = 5;
 

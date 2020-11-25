@@ -1,3 +1,4 @@
+import * as _ from 'lodash';
 import ENV, {DEFAULTS} from './EnvBase';
 import { replaceFromDict } from "../Utils";
 
@@ -34,7 +35,7 @@ const OVERRIDES = {
  * You also have the choice to override DEBUG which turns on additional logging and functionality
  */
 
-const env: ENV = {...DEFAULTS, ...ENV_JSON, ...OVERRIDES};
+const env: ENV = _.merge({}, DEFAULTS, ENV_JSON, OVERRIDES);
 export default env;
 
 // Re-export the type so this file is the only required import

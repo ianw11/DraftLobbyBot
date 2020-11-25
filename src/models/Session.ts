@@ -21,6 +21,10 @@ export default class Session {
     // GETTERS AND SETTERS //
     /////////////////////////
 
+    get ownerId(): DraftUserId|undefined {
+        return this.data.ownerId;
+    }
+
     get sessionId(): SessionId {
         if (!this.data.sessionId) {
             throw new Error("Session doesn't have session id");
@@ -50,19 +54,17 @@ export default class Session {
         this.data.sessionParameters.name = name;
         await this.updateMessage();
     }
-    getName(): string {
-        let outputName;
-        if (this.data.ownerId && this.data.sessionParameters.name) {
-            const name = this.resolver.resolveUser(this.data.ownerId).getDisplayName();
 
-            outputName = replaceFromDict(this.data.sessionParameters.name, "%", {
+    async getNameAsync(): Promise<string> {
+        if (this.data.ownerId && this.data.sessionParameters.name) {
+            const name = await this.resolver.resolveUser(this.data.ownerId).getDisplayNameAsync();
+            return replaceFromDict(this.data.sessionParameters.name, "%", {
                 USER: name,
                 NAME: name
             });
         } else {
-            outputName = this.data.sessionParameters.unownedSessionName;
+            return this.data.sessionParameters.unownedSessionName;
         }
-        return outputName;
     }
 
     setTemplateUrl(templateUrl?: string): void {
@@ -263,7 +265,7 @@ export default class Session {
     private async updateMessage() {
         const message = await this.resolver.discordResolver.resolveMessageInAnnouncementChannel(this.sessionId);
         if (message) {
-            await message.edit('', this.getEmbed());
+            await message.edit('', await this.getEmbed());
         }
     }
 
@@ -271,20 +273,20 @@ export default class Session {
     // Output Formatting Methods //
     ///////////////////////////////
 
-    getConfirmedMessage(overrides?: Record<string, string>): string {
-        return this.replaceMessage(this.data.sessionParameters.sessionConfirmMessage, overrides);
+    async getConfirmedMessage(overrides?: Record<string, string>): Promise<string> {
+        return await this.replaceMessage(this.data.sessionParameters.sessionConfirmMessage, overrides);
     }
 
-    getWaitlistMessage(): string {
-        return this.replaceMessage(this.data.sessionParameters.sessionWaitlistMessage);
+    async getWaitlistMessage(): Promise<string> {
+        return await this.replaceMessage(this.data.sessionParameters.sessionWaitlistMessage);
     }
 
-    getCancelledMessage(): string {
-        return this.replaceMessage(this.data.sessionParameters.sessionCancelMessage);
+    async getCancelledMessage(): Promise<string> {
+        return await this.replaceMessage(this.data.sessionParameters.sessionCancelMessage);
     }
 
-    private replaceMessage(msg: string, overrides = {}): string {
-        return replaceFromDict(msg, "%", {...{NAME: this.getName(), URL: this.getUrl()}, ...overrides});
+    private async replaceMessage(msg: string, overrides = {}): Promise<string> {
+        return replaceFromDict(msg, "%", {...{NAME: await this.getNameAsync(), URL: this.getUrl()}, ...overrides});
     }
 
     /////////////////////////
@@ -292,7 +294,7 @@ export default class Session {
     /////////////////////////
 
     async broadcast(message: string, includeWaitlist = false): Promise<void> {
-        const sessionName = this.getName();
+        const sessionName = await this.getNameAsync();
         let intro = `EVENT ${sessionName}`;
         if (this.data.ownerId) {
             const owner = this.resolver.resolveUser(this.data.ownerId);
@@ -311,13 +313,13 @@ export default class Session {
         }
     }
 
-    toSimpleString(): string {
+    async toSimpleString(): Promise<string> {
         const {description} = this.data.sessionParameters;
         const date = this.data.sessionParameters.date;
-        return `**${this.getName()}** ${date ? `- starts at ${date.toString()} ` : ''} || ${description}`;
+        return `**${await this.getNameAsync()}** ${date ? `- starts at ${date.toString()} ` : ''} || ${description}`;
     }
 
-    getEmbed(provideOwnerInformation?: boolean): MessageEmbed {
+    async getEmbed(provideOwnerInformation?: boolean): Promise<MessageEmbed> {
         const {description, sessionCapacity, fireWhenFull} = this.data.sessionParameters;
         const date = this.data.sessionParameters.date;
         const numJoined = this.getNumConfirmed();
@@ -351,13 +353,13 @@ export default class Session {
         } else {
             fields.push({
                 name: "How to join",
-                value: `Simply react to this message using ${this.resolver.env.EMOJI} and I'll tell you if you're confirmed or just on the waitlist`
+                value: `Simply react to this message using ${this.resolver.env.EMOJI} and I'll tell you if you're confirmed or just on the waitlist\nIf I don't respond when you react, send a message then try reacting again.`
             });
         }
 
         return new MessageEmbed()
             .setColor(3447003)
-            .setTitle(this.getName())
+            .setTitle(await this.getNameAsync())
             // .setAuthor("Your friendly neighborhood Draft Bot")
             .setDescription(description)
             .addFields(fields);

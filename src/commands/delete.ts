@@ -5,7 +5,7 @@ export default class DeleteCommand implements Command {
     static readonly singleton = new DeleteCommand();
 
     async execute(context: Context): Promise<void> {
-        await context.draftServer.closeSession(context.draftUser);
+        await context.draftServer.closeSessionOwnedByUser(context.draftUser);
     }
 
     help(): string {

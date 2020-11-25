@@ -1,6 +1,6 @@
-import { ObjectChain } from "lodash";
+import { ObjectChain, CollectionChain } from "lodash";
 
-export { ObjectChain };
+export { ObjectChain, CollectionChain };
 
 export class LowDbViewBase<T> {
     protected readonly cursor: ObjectChain<T>;

@@ -6,13 +6,19 @@ type DatabaseDriver = 'inmemory' | 'lowdb';
 // INTERFACES GROUPING THE CONFIGURABLE VALUES //
 /////////////////////////////////////////////////
 
+interface DatabaseFields {
+    DB_DRIVER: DatabaseDriver;
+
+    LOW_DB_FILE: string;
+}
+
 interface ShallowEnvDefaultable {
     PREFIX: string;
     DRAFT_CHANNEL_NAME: string;
     EMOJI: string;
     ERROR_OUTPUT: string;
 
-    DB_DRIVER: DatabaseDriver;
+    DATABASE: DatabaseFields;
     
     DEBUG: boolean;
     log: (msg: string) => void;
@@ -61,7 +67,10 @@ const DefaultShallowEnvDefaults: ShallowEnvDefaultable = {
     EMOJI: "🌟",
     ERROR_OUTPUT: "%s (If this doesn't make sense, please inform an admin)",
 
-    DB_DRIVER: 'lowdb',
+    DATABASE: {
+        DB_DRIVER: 'lowdb',
+        LOW_DB_FILE: 'data/lowdb_database.json'
+    },
 
     DEBUG: false,
     log: console.log
@@ -93,5 +102,6 @@ const DefaultEnvSessionOptionDefaults: EnvSessionOptions = {
 
 type ENV = ShallowEnv & EnvClientOptions & EnvSessionOptions;
 export default ENV;
+export {ENV};
 
 export const DEFAULTS = {...DefaultShallowEnvDefaults, ...DefaultEnvClientOptionsDefaults, ...DefaultEnvSessionOptionDefaults};

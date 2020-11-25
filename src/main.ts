@@ -10,6 +10,8 @@ import { LowdbDriver } from './database/lowdb/LowdbDriver';
 import { DBDriver } from './database/DBDriver';
 import { InMemoryDriver } from './database/inmemory/InMemoryDriver';
 import { ServerId } from './models/types/BaseTypes';
+import { ExpressDriver } from './express/ExpressDriver';
+import { ISessionView } from './database/SessionDBSchema';
 
 //
 // To set your Discord Bot Token, take a look at ./env/env.ts for an explanation (hint: make an env.json)
@@ -23,15 +25,12 @@ const SERVER_CACHE: Record<ServerId, DraftServer> = {};
 // DATA LAYER //
 ////////////////
 
-function getResolver(guild: Guild, env: ENV, dbDriver: DBDriver): Resolver {
-    return new Resolver(new DiscordResolver(guild, env), dbDriver);
-}
-
 function getDraftServer(guild: Guild, env: ENV, dbDriver: DBDriver): DraftServer {
     const serverId = guild.id;
     let server = SERVER_CACHE[serverId];
     if (!server) {
-        server = new DraftServer(env, getResolver(guild, env, dbDriver));
+        const resolver = new Resolver(new DiscordResolver(guild, env), dbDriver);
+        server = new DraftServer(env, resolver);
         SERVER_CACHE[serverId] = server;
     }
     return server;
@@ -60,7 +59,7 @@ async function outputError(e: Error, user: User | PartialUser, env: ENV) {
     await (await user.createDM()).send(env.ERROR_OUTPUT.replace("%s", e.message))
 }
 
-function onMessage(env: ENV, dbDriver: DBDriver) {
+function onMessage(env: ENV, dbDriver: DBDriver, killSwitch: ()=>void) {
     const {DEBUG, PREFIX, log} = env;
 
     return async (message: Message) => {
@@ -69,8 +68,7 @@ function onMessage(env: ENV, dbDriver: DBDriver) {
         // Perform initial filtering checks
         if (author.bot) return;
         if (DEBUG && content === 'dc') {
-            log("Bye bye");
-            message.client.destroy(); // Ends the Node process too
+            killSwitch();
             return;
         }
         if (message.channel.type == 'dm') {
@@ -144,6 +142,116 @@ function onReaction(env: ENV, dbDriver: DBDriver, callback: ReactionCallback): C
     }
 }
 
+// The setup function that pre-loads Session data and turns on the Express server
+function onReady(client: Client, env: ENV, dbDriver: DBDriver, expressDriver: ExpressDriver, provideKillSwitch: (killSwitch: ()=>void)=>void) {
+    let killFlag = false;
+    return async () => {
+        env.log("Logged in successfully - BEGINNING SETUP");
+        env.log(`${client.guilds.cache.array().length} guilds loaded`);
+
+        // The first thing we do is go through and preload the guilds, messages, and users that
+        // exist in the database.
+        // We MUST preload guilds and sessions (so we are even watching those messages in the first place)
+        // and preloading users 
+
+        let numErrors = 0;
+        let successful = 0;
+        let additionalGuilds = 0;
+        const kickedFromServerIds: {[key: string]: boolean} = {};
+        await Promise.all(dbDriver.getAllSessions().map(async (sessionView: ISessionView) => {
+            const { serverId, sessionId, ownerId } = sessionView;
+
+            if (kickedFromServerIds[serverId]) {
+                ++numErrors;
+                // If we've already seen this server, all that needs
+                // to happen is to remove it from the database
+                dbDriver.deleteSessionFromDatabase(serverId, sessionId);
+                return;
+            }
+
+            // If the bot has been kicked from a server OR
+            // if we're unable to load the message we created OR
+            // if there _should_ be an owner but maybe the owner left the server,
+            // then just close the session (which deletes and notifies attendees).
+
+            let guild = client.guilds.resolve(serverId);
+            if (!guild) {
+                try {
+                    guild = await client.guilds.fetch(serverId);
+                    ++additionalGuilds;
+                } catch (e) {
+                    ++numErrors;
+                    // We were kicked from the server
+                    kickedFromServerIds[serverId] = true;
+                    dbDriver.deleteSessionFromDatabase(serverId, sessionId);
+
+                    // Delete all other users from the database the first time this happens
+                    dbDriver.getAllUsersFromServer(serverId).forEach((user) => {
+                        dbDriver.deleteUserFromDatabase(serverId, user.userId);
+                    });
+                    return;
+                }
+            }
+
+            const draftServer = getDraftServer(guild, env, dbDriver);
+
+            if (ownerId) {
+                try {
+                    // Preload the owner
+                    await guild.members.fetch(ownerId);
+
+                    // Also preload their display name
+                    // This is because if commands are executed via another input (ie Express)
+                    // then the user may not have ever shown up to the client before.
+                    // await draftServer.resolver.resolveUser(ownerId).getDisplayNameAsync();
+                } catch (e) {
+                    ++numErrors;
+                    // The owner left the server
+                    await draftServer.closeSession(sessionId);
+                    return;
+                }
+            }
+
+            const channel = draftServer.resolver.discordResolver.announcementChannel;
+            if (channel) {
+                try {
+                    // Preload the message to watch
+                    await channel.messages.fetch(sessionId);
+                } catch (e) {
+                    ++numErrors;
+                    // The message was deleted
+                    await draftServer.closeSession(sessionId);
+                    return;
+                }
+            }
+
+            ++successful;
+        }));
+        env.log(`Preloaded ${successful} sessions.${numErrors > 0 ? ` There were ${numErrors} discrepancies/issues but they have been resolved.` : ''}`);
+        env.log(`${additionalGuilds} guilds added to cache.  New total: ${client.guilds.cache.array().length}`);
+
+        if (!killFlag) {
+            // Additional tasks that need to be started alongside the application lifecycle go here
+            // Be sure to safely close everything using the killSwitch() below
+
+            expressDriver.startServer();
+        }
+
+        provideKillSwitch(() => {
+            env.log("Kill switch triggered, closing server");
+            killFlag = true;
+    
+            // Anything that listens to a port/maintains a connection needs to be turned off
+            expressDriver.stopServer();
+
+            client.destroy(); // Kill the client last
+            env.log("Cleanup complete. Bye bye!");
+        });
+
+        env.log("ALL SETUP COMPLETE - SERVER IS READY");
+    }
+}
+
 ////////////////////
 // DISCORD CLIENT //
 ////////////////////
@@ -152,10 +260,10 @@ export default function main(env: ENV): void {
     const {DISCORD_BOT_TOKEN, BOT_ACTIVITY, BOT_ACTIVITY_TYPE, MESSAGE_CACHE_SIZE} = env;
 
     // Setup database
-    let dbDriver;
-    switch(env.DB_DRIVER) {
+    let dbDriver: DBDriver;
+    switch(env.DATABASE.DB_DRIVER) {
         case 'lowdb':
-            dbDriver = new LowdbDriver();
+            dbDriver = new LowdbDriver(env);
             break;
         case 'inmemory':
             dbDriver = new InMemoryDriver();
@@ -181,11 +289,22 @@ export default function main(env: ENV): void {
     // Create Discord Client
     const client = new Client(DISCORD_CLIENT_OPTIONS);
 
-    // Attach listeners to Discord Client
-    client.once('ready', () => {
-        env.log("Logged in successfully");
+    // Set up Express server by providing it with the Discord Client and a way to resolve DraftServers
+    const expressServer = new ExpressDriver(client, env, async (serverId) => {
+        let guild = client.guilds.resolve(serverId);
+        if (!guild) {
+            guild = await client.guilds.fetch(serverId);
+        }
+        return getDraftServer(guild, env, dbDriver);
     });
-    client.on('message', onMessage(env, dbDriver));
+
+    let killSwitch: ()=>void = () => {
+        throw new Error("KILL SWITCH WAS NOT HOOKED UP CORRECTLY");
+    };
+
+    // Attach listeners to Discord Client
+    client.once('ready', onReady(client, env, dbDriver, expressServer, (ks) => {killSwitch = ks} ));
+    client.on('message', onMessage(env, dbDriver, ()=>killSwitch()));
     client.on('messageReactionAdd', onReaction(env, dbDriver, async (draftUser, session) => await session.addPlayer(draftUser)));
     client.on('messageReactionRemove', onReaction(env, dbDriver, async (draftUser, session) => await session.removePlayer(draftUser)));
 

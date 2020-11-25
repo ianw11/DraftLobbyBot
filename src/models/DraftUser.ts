@@ -28,6 +28,14 @@ export default class DraftUser {
         return name;
     }
 
+    async getDisplayNameAsync(): Promise<string> {
+        const name = (await this.getDiscordGuildMemberAsync()).nickname;
+        if (name) {
+            return name;
+        }
+        return (await this.getDiscordUserAsync()).username;
+    }
+
     setCreatedSessionId(createdSessionId?: SessionId): void {
         this.data.createdSessionId = createdSessionId;
     }
@@ -41,27 +49,27 @@ export default class DraftUser {
 
     async addedToSession(session: Session): Promise<void> {
         this.data.addedToSession(session.sessionId);
-        await this.sendDM(`You're confirmed for ${session.getName()}`);
+        await this.sendDM(`You're confirmed for ${await session.getNameAsync()}`);
     }
 
     async removedFromSession(session: Session): Promise<void> {
         this.data.removedFromSession(session.sessionId);
-        await this.sendDM(`You've been removed from ${session.getName()}`);
+        await this.sendDM(`You've been removed from ${await session.getNameAsync()}`);
     }
 
     async upgradedFromWaitlist(session: Session): Promise<void> {
         this.data.upgradedFromWaitlist(session.sessionId);
-        await this.sendDM(`You've been upgraded from the waitlist for ${session.getName()}`);
+        await this.sendDM(`You've been upgraded from the waitlist for ${await session.getNameAsync()}`);
     }
 
     async addedToWaitlist(session: Session): Promise<void> {
         this.data.addedToWaitlist(session.sessionId);
-        await this.sendDM(`You've been waitlisted for ${session.getName()}.  You're in position: ${session.getNumWaitlisted()}`);
+        await this.sendDM(`You've been waitlisted for ${await session.getNameAsync()}.  You're in position: ${session.getNumWaitlisted()}`);
     }
 
     async removedFromWaitlist(session: Session): Promise<void> {
         this.data.removedFromWaitlist(session.sessionId)
-        await this.sendDM(`You've been removed from the waitlist for ${session.getName()}`);
+        await this.sendDM(`You've been removed from the waitlist for ${await session.getNameAsync()}`);
     }
 
     async sessionClosed(session: Session, startedNormally = true): Promise<void> {
@@ -69,12 +77,12 @@ export default class DraftUser {
 
         if (startedNormally) {
             if (waitlisted) {
-                await this.sendDM(session.getWaitlistMessage());
+                await this.sendDM(await session.getWaitlistMessage());
             } else {
-                await this.sendDM(session.getConfirmedMessage());
+                await this.sendDM(await session.getConfirmedMessage());
             }
         } else {
-            await this.sendDM(session.getCancelledMessage());
+            await this.sendDM(await session.getCancelledMessage());
         }
     }
 
@@ -86,10 +94,10 @@ export default class DraftUser {
         let msg = "\n**Sessions you are confirmed for:**\n";
 
         const callback = (includePlace: boolean) => {
-            return (sessionId: SessionId) => {
+            return async (sessionId: SessionId) => {
                 const session = this.resolver.resolveSession(sessionId);
 
-                msg += `- ${session.toSimpleString()}`;
+                msg += `- ${await session.toSimpleString()}`;
                 if (includePlace) {
                     const position = session.getWaitlistIndexOf(this.getUserId()) + 1;
                     msg += ` || You are in position ${position} of ${session.getNumWaitlisted()}`;
@@ -98,10 +106,10 @@ export default class DraftUser {
             }
         };
 
-        this.data.joinedSessionIds.forEach(callback(false));
+        await Promise.all(this.data.joinedSessionIds.map(callback(false)));
         if (this.data.waitlistedSessionIds.length > 0) {
             msg += "**Sessions you are waitlisted for:**\n";
-            this.data.waitlistedSessionIds.forEach(callback(true));
+            await Promise.all(this.data.waitlistedSessionIds.map(callback(true)));
         }
 
         await this.sendDM(msg);
@@ -114,7 +122,7 @@ export default class DraftUser {
         }
         const session = this.resolver.resolveSession(this.data.createdSessionId);
 
-        await this.sendEmbedDM(session.getEmbed(true));
+        await this.sendEmbedDM(await session.getEmbed(true));
     }
 
     ////////////////////
@@ -150,5 +158,9 @@ export default class DraftUser {
 
     private getDiscordGuildMember(): GuildMember | null {
         return this.resolver.discordResolver.resolveGuildMember(this.data.userId);
+    }
+
+    private getDiscordGuildMemberAsync(): Promise<GuildMember> {
+        return this.resolver.discordResolver.fetchGuildMember(this.data.userId);
     }
 }

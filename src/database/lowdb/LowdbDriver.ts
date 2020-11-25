@@ -1,10 +1,10 @@
-import * as low from 'lowdb';
-import * as FileSync from 'lowdb/adapters/FileSync';
+import low from 'lowdb';
+import FileSync from 'lowdb/adapters/FileSync';
 import { LowdbUserView } from './LowdbUserView';
 import { LowdbSessionView } from './LowdbSessionView';
 import { DBDriver, DBDriverBase } from '../DBDriver';
 import { IUserView, UserDBSchema } from '../UserDBSchema';
-import { ISessionView, SessionDBSchema, SessionConstructorParameter } from '../SessionDBSchema';
+import { ISessionView, SessionDBSchema, SessionConstructorParameter, ReadonlySessionView } from '../SessionDBSchema';
 import { ENV } from '../../env/env';
 import { DraftUserId, ServerId, SessionId } from '../../models/types/BaseTypes';
 
@@ -18,10 +18,13 @@ export class LowdbDriver extends DBDriverBase implements DBDriver {
     
     db: LowDB;
 
-    constructor() {
+    constructor(env: ENV) {
         super();
 
-        const adapter = new FileSync('data/lowdb_database.json');
+        if (!env.DATABASE.LOW_DB_FILE) {
+            throw new Error("Low db file wasn't defined");
+        }
+        const adapter = new FileSync(env.DATABASE.LOW_DB_FILE);
         this.db = low(adapter);
 
         // Initialize the database with defaults
@@ -39,6 +42,13 @@ export class LowdbDriver extends DBDriverBase implements DBDriver {
         }
     
         return new LowdbUserView(cursor);
+    }
+
+    getAllUsersFromServer(serverId: ServerId): IUserView[] {
+        const users = this.db.get("Users");
+        return users.filter({serverId: serverId}).map((userDbSchema: UserDBSchema) => {
+            return new LowdbUserView(users.find({serverId: serverId, userId: userDbSchema.userId}));
+        }).value();
     }
 
     deleteUserFromDatabase(serverId: ServerId, userId: DraftUserId): void {
@@ -70,5 +80,16 @@ export class LowdbDriver extends DBDriverBase implements DBDriver {
 
     deleteSessionFromDatabase(serverId: ServerId, sessionId: SessionId): void {
         this.db.get("Sessions").remove({sessionId: sessionId, serverId: serverId}).write();
+    }
+
+    getAllSessions(): ReadonlySessionView[] {
+        const sessions: ReadonlySessionView[] = [];
+        
+        const sessionChain = this.db.get('Sessions');
+        sessionChain.value().forEach((value) => {
+            sessions.push(new ReadonlySessionView(value));
+        });
+
+        return sessions;
     }
 }

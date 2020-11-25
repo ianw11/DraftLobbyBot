@@ -26,7 +26,7 @@ export default class DraftServer {
         }
         // Close out any prior Sessions
         if (draftUser.getCreatedSessionId()) {
-            await this.closeSession(draftUser);
+            await this.closeSessionOwnedByUser(draftUser);
         }
 
         // Send a temporary message to get the id and build a Session with it
@@ -51,15 +51,37 @@ export default class DraftServer {
         return this.resolver.discordResolver.guild.id;
     }
 
-    async startSession(sessionOwner: DraftUser): Promise<void> {
-        await this.terminateSession(sessionOwner, true);
+    async sessionOwnerLeftServer(sessionOwner: DraftUser): Promise<void> {
+        await this.terminateSessionOwnedByUser(sessionOwner);
     }
 
-    async closeSession(sessionOwner: DraftUser): Promise<void> {
-        await this.terminateSession(sessionOwner);
+    async startSessionOwnedByUser(sessionOwner: DraftUser): Promise<void> {
+        await this.terminateSessionOwnedByUser(sessionOwner, true);
     }
 
-    private async terminateSession(sessionOwner: DraftUser, started = false) {
+    async closeSessionOwnedByUser(sessionOwner: DraftUser): Promise<void> {
+        await this.terminateSessionOwnedByUser(sessionOwner);
+    }
+
+    async startSession(sessionId: SessionId): Promise<void> {
+        await this.terminateSession(sessionId, true);
+    }
+
+    async closeSession(sessionId: SessionId): Promise<void> {
+        await this.terminateSession(sessionId);
+    }
+
+    /*
+      These two methods need to stay in sync. There are 2 ways to terminate Sessions and each
+      step needs to be met:
+      0. Ensure there is the proper authorization to terminate - if a user is provided ensure they are the owner
+      1. Terminate session (this notifies all in queues)
+      2. Remove the session from whatever database is attached
+      3. If there is a session owner, unset their session
+    */
+
+    private async terminateSessionOwnedByUser(sessionOwner: DraftUser, started = false) {
+        // 0
         if (!sessionOwner.getCreatedSessionId()) {
             throw new Error("You don't have any session to terminate");
         }
@@ -67,13 +89,32 @@ export default class DraftServer {
         const session = this.getSessionFromDraftUser(sessionOwner);
 
         if (session) {
+            // 1
             await session.terminate(started);
             if (session.sessionId) {
+                // 2
                 this.resolver.dbDriver.deleteSessionFromDatabase(this.serverId, session.sessionId);
             }
         }
         
+        // 3
         sessionOwner.setCreatedSessionId(undefined);
+    }
+
+    private async terminateSession(sessionId: SessionId, started = false): Promise<void> {
+        const session = this.resolver.resolveSession(sessionId);
+        // 1
+        await session.terminate(started);
+        
+        // 3
+        if (session.ownerId) {
+            this.resolver.resolveUser(session.ownerId).setCreatedSessionId(undefined);
+        }
+
+        // We have to put the db deletion at the end because deleting from database implies we
+        // no longer have access to the data. We need the ownerId before it's lost forever.
+        // 2
+        this.resolver.dbDriver.deleteSessionFromDatabase(this.serverId, session.sessionId);
     }
 
     ////////////////////////

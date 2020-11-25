@@ -31,3 +31,6 @@ const Mapping: Record<string, Command> = {
 };
 
 export default Mapping;
+
+const Commands = Mapping;
+export {Commands};

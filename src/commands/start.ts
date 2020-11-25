@@ -5,7 +5,7 @@ export default class StartCommand implements Command {
     static readonly singleton = new StartCommand();
     
     async execute(context: Context): Promise<void> {
-        await context.draftServer.startSession(context.draftUser);
+        await context.draftServer.startSessionOwnedByUser(context.draftUser);
     }
 
     help(): string {
