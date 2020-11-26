@@ -165,6 +165,7 @@ function* uniqueUserGenerator(_userId?: DraftUserId, name?: string, nickname?: s
         draftUser.getUserId().returns(userId);
         const username = name ? name : `BULK_USER_${id}`;
         draftUser.getDisplayName().returns(username);
+        draftUser.getDisplayNameAsync().resolves(username);
 
         // Apparently Substitute doesn't mock properties, so we must explicitly do that here
 
@@ -251,15 +252,15 @@ export default function setup(): MocksInterface {
     // Finish out the Session object (pull it out and override everything)
     const {mockSession, mockSessionParameters} = mocks;
     mockSession.sessionId.returns(SESSION_ID);
-    mockSession.getName().returns(mockSessionParameters.name);
+    mockSession.getNameAsync().resolves(mockSessionParameters.name);
     mockSession.getDescription().returns(mockSessionParameters.description);
     mockSession.getFireWhenFull().returns(mockSessionParameters.fireWhenFull);
     mockSession.getSessionCapacity().returns(mockSessionParameters.sessionCapacity);
     mockSession.getNumConfirmed().returns(NUM_CONFIRMED);
     mockSession.getNumWaitlisted().returns(NUM_IN_WAITLIST);
-    mockSession.getConfirmedMessage().returns(mockSessionParameters.sessionConfirmMessage);
-    mockSession.getWaitlistMessage().returns(mockSessionParameters.sessionWaitlistMessage);
-    mockSession.getCancelledMessage().returns(mockSessionParameters.sessionCancelMessage);
+    mockSession.getConfirmedMessage().resolves(mockSessionParameters.sessionConfirmMessage);
+    mockSession.getWaitlistMessage().resolves(mockSessionParameters.sessionWaitlistMessage);
+    mockSession.getCancelledMessage().resolves(mockSessionParameters.sessionCancelMessage);
 
 
     mockResolver.env.returns(mockEnv);

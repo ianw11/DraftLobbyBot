@@ -1,6 +1,6 @@
 import { expect } from "chai";
 import { IUserView } from "../../src/database/UserDBSchema";
-import { mockConstants } from '../setup.spec';
+import { mockConstants, mockEnv } from '../setup.spec';
 import { LowdbDriver } from "../../src/database/lowdb/LowdbDriver";
 import { DBDriver } from "../../src/database/DBDriver";
 
@@ -8,7 +8,7 @@ let driver: DBDriver;
 let data: IUserView;
 const { DISCORD_SERVER_ID, DISCORD_USER_ID } = mockConstants;
 beforeEach(() => {
-    driver = new LowdbDriver();
+    driver = new LowdbDriver(mockEnv);
     data = driver.getOrCreateUserView(DISCORD_SERVER_ID, DISCORD_USER_ID);
 });
 
