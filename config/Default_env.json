@@ -1,3 +1,7 @@
 {
-    "DISCORD_BOT_TOKEN": "PROVIDE YOUR OWN TOKEN AND RENAME THIS FILE TO 'env.json'";
+    "DISCORD_BOT_TOKEN": "PROVIDE YOUR OWN TOKEN AND RENAME THIS FILE TO 'env.json'",
+
+    "DATABASE": {
+        "DB_DRIVER": "lowdb"
+    }
 }

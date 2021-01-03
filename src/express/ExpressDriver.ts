@@ -26,6 +26,13 @@ export class ExpressDriver {
         if (this.server) {
             return;
         }
+
+        const { PORT, ENABLED } = this.env.EXPRESS;
+
+        if (!ENABLED) {
+            this.env.log("ENV says Express is disabled - not creating server");
+            return;
+        }
     
         const app = express();
     
@@ -36,7 +43,8 @@ export class ExpressDriver {
         app.get('*', this.handleRequest.bind(this));
         app.post('*', this.handleRequest.bind(this));
     
-        this.server = app.listen(6942);
+        this.server = app.listen(PORT);
+        this.env.log(`Express listening on port ${PORT}`);
     }
 
     stopServer(): void {

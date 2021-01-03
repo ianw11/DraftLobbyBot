@@ -12,6 +12,11 @@ interface DatabaseFields {
     LOW_DB_FILE: string;
 }
 
+interface ExpressFields {
+    ENABLED: boolean;
+    PORT: number;
+}
+
 interface ShallowEnvDefaultable {
     PREFIX: string;
     DRAFT_CHANNEL_NAME: string;
@@ -19,6 +24,8 @@ interface ShallowEnvDefaultable {
     ERROR_OUTPUT: string;
 
     DATABASE: DatabaseFields;
+
+    EXPRESS: ExpressFields;
     
     DEBUG: boolean;
     log: (msg: string) => void;
@@ -29,8 +36,6 @@ interface ShallowEnvDefaultable {
 export interface ShallowEnvRequiredFields {
     DISCORD_BOT_TOKEN: string;
 }
-
-type ShallowEnv = ShallowEnvDefaultable & ShallowEnvRequiredFields;
 
 interface EnvClientOptions {
     BOT_ACTIVITY: string;
@@ -72,6 +77,11 @@ const DefaultShallowEnvDefaults: ShallowEnvDefaultable = {
         LOW_DB_FILE: 'data/lowdb_database.json'
     },
 
+    EXPRESS: {
+        ENABLED: false,
+        PORT: 6942
+    },
+
     DEBUG: false,
     log: console.log
 };
@@ -95,6 +105,8 @@ const DefaultEnvSessionOptionDefaults: EnvSessionOptions = {
     DEFAULT_SESSION_CANCELLED_MESSAGE: "%NAME% has been cancelled",
     DEFAULT_TEMPLATE_URL: "<NO_URL>"
 };
+
+type ShallowEnv = ShallowEnvDefaultable & ShallowEnvRequiredFields;
 
 /////////////////
 // THE EXPORTS //

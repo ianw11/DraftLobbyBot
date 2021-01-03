@@ -130,7 +130,7 @@ describe('test replaceFromDict', () => {
     });
 });
 
-describe('test asyncForEach (this could take up to 2 seconds)', () => {
+describe('test asyncForEach (this may take longer than other tests)', () => {
     const expected = [1, 2, 3, 4, 5, 6, 7, 8, 9];
 
     it('Executes in order and returns properly', async () => {
@@ -139,7 +139,7 @@ describe('test asyncForEach (this could take up to 2 seconds)', () => {
             setTimeout(() => {
                 outerArr.push(elem);
                 res();
-            }, elem);
+            }, elem * 50);
         });
 
         await asyncForEach(expected, callback);

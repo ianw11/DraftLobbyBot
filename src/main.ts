@@ -257,11 +257,15 @@ function onReady(client: Client, env: ENV, dbDriver: DBDriver, expressDriver: Ex
 ////////////////////
 
 export default function main(env: ENV): void {
-    const {DISCORD_BOT_TOKEN, BOT_ACTIVITY, BOT_ACTIVITY_TYPE, MESSAGE_CACHE_SIZE} = env;
+    const {DISCORD_BOT_TOKEN, BOT_ACTIVITY, BOT_ACTIVITY_TYPE, MESSAGE_CACHE_SIZE, DATABASE} = env;
+
+    if (!DATABASE || !DATABASE.DB_DRIVER) {
+        throw new Error("Missing DATABASE block - please update your env.json file to include one");
+    }
 
     // Setup database
     let dbDriver: DBDriver;
-    switch(env.DATABASE.DB_DRIVER) {
+    switch(DATABASE.DB_DRIVER) {
         case 'lowdb':
             dbDriver = new LowdbDriver(env);
             break;
