@@ -5,7 +5,8 @@
     "target": "ES5",
     "lib": [ "es2016" ],
     "strict": true,
-    "resolveJsonModule": true
+    "resolveJsonModule": true,
+    "outDir": "build"
 },
 "include": [
     "**/*"

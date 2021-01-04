@@ -1,9 +1,11 @@
 {
     "compilerOptions": {
         "sourceMap":  true,
-        "target": "ES6",
+        "target": "ES5",
         "lib": [ "es2016" ],
-        "strict": false,
-        "outDir": "./build"
-    }
+        "strict": false
+    },
+    "include": [
+        "**/*"
+    ]
 }

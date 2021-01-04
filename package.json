@@ -6,7 +6,7 @@
   "scripts": {
     "lint": "npx eslint . --ext .ts",
     "build": "npm run lint && npm run buildNoLint",
-    "buildNoLint": "tsc --outDir build",
+    "buildNoLint": "tsc",
     "start": "npm run build && node build/server.js",
     "startNoLint": "npm run buildNoLint && node build/server.js",
     "test": "npm run build && npm run executeTestWindows",
@@ -14,8 +14,10 @@
     "executeTestWindows": "SET TS_NODE_PROJECT=test/tsconfig.json&& mocha -P test --colors -r ts-node/register test/**/*.spec.ts",
     "testUnix": "npm run build && npm run executeTestUnix",
     "executeTestUnix": "TS_NODE_PROJECT='test/tsconfig.json' mocha -P test --colors -r ts-node/register test/**/*.spec.ts test/*.spec.ts",
-    "clean": "rm -r build && npm clean-install",
-    "cleanWindows": "del /Q /S \"build\" && npm clean-install",
+    "clean": "rm -r build",
+    "fullClean": "npm run clean && npm clean-install",
+    "cleanWindows": "del /Q /S \"build\"",
+    "fullCleanWindows": "npm run cleanWindows && npm clean-install",
     "cleanStartNoLint": "npm run clean && npm run startNoLint",
     "cleanStartNoLintWindows": "npm run cleanWindows && npm run startNoLint"
   },
