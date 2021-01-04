@@ -11,7 +11,7 @@ const COMMON_TEMPLATE_NAME = "_common";
 
 try {
     // eslint-disable-next-line @typescript-eslint/no-var-requires
-    Templates = require('../../config/SessionTemplates.json') as SessionParameterFile;
+    Templates = require('../../../config/SessionTemplates.json') as SessionParameterFile;
     CommonTemplate = Templates[COMMON_TEMPLATE_NAME] || {};
 } catch (e) {
     console.log("Could not find config/SessionTemplates.json - running without template support");

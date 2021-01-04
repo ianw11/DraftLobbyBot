@@ -2,7 +2,7 @@ import * as _ from 'lodash';
 import ENV, {DEFAULTS} from './EnvBase';
 import { replaceFromDict } from "../Utils";
 
-const ENV_JSON_FILE_LOCATION = '../../config/env.json'; // Edit this if needed
+const ENV_JSON_FILE_LOCATION = '../../../config/env.json'; // Edit this if needed
 
 let ENV_JSON = { DISCORD_BOT_TOKEN: "NO_BOT_TOKEN_PROVIDED" };
 try {

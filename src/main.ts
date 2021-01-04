@@ -317,5 +317,6 @@ export default function main(env: ENV): void {
         client.login(DISCORD_BOT_TOKEN);
     } else {
         console.error("Unable to login - DISCORD_BOT_TOKEN was not properly set up");
+        client.destroy();
     }
 }
