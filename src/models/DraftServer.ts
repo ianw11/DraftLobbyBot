@@ -127,10 +127,7 @@ export default class DraftServer {
         // To do this, we first compare the message's channel's id to the id of the saved
         // announcement channel.  However, to do so we need to have already hooked up to
         // the announcement channel so this is still flaky.
-
-        // TODO: DETERMINE IF THE ABOVE COMMENT STILL NEEDS TO APPLY
-
-        /*
+        
         const announcementChannel = this.resolver.discordResolver.announcementChannel;
         if (!announcementChannel) {
             throw new Error("Bot was not properly set up with an announcement channel - probably requires a restart");
@@ -138,7 +135,6 @@ export default class DraftServer {
         if (message.channel.id !== announcementChannel.id) {
             return;
         }
-        */
 
         return this.resolver.resolveSession(message.id);
     }
