@@ -12,6 +12,7 @@ import { InMemoryDriver } from './database/inmemory/InMemoryDriver';
 import { ServerId } from './models/types/BaseTypes';
 import { ExpressDriver } from './express/ExpressDriver';
 import { ISessionView } from './database/SessionDBSchema';
+import { asyncForEach } from './Utils';
 
 //
 // To set your Discord Bot Token, take a look at ./env/env.ts for an explanation (hint: make an env.json)
@@ -158,7 +159,7 @@ function onReady(client: Client, env: ENV, dbDriver: DBDriver, expressDriver: Ex
         let successful = 0;
         let additionalGuilds = 0;
         const kickedFromServerIds: {[key: string]: boolean} = {};
-        await Promise.all(dbDriver.getAllSessions().map(async (sessionView: ISessionView) => {
+        asyncForEach(dbDriver.getAllSessions(), async (sessionView: ISessionView) => {
             const { serverId, sessionId, ownerId } = sessionView;
 
             if (kickedFromServerIds[serverId]) {
@@ -226,7 +227,7 @@ function onReady(client: Client, env: ENV, dbDriver: DBDriver, expressDriver: Ex
             }
 
             ++successful;
-        }));
+        });
         env.log(`Preloaded ${successful} sessions.${numErrors > 0 ? ` There were ${numErrors} discrepancies/issues but they have been resolved.` : ''}`);
         env.log(`${additionalGuilds} guilds added to cache.  New total: ${client.guilds.cache.array().length}`);
 
