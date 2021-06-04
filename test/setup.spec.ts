@@ -245,6 +245,13 @@ export default function setup(): MocksInterface {
         sessionCancelMessage: 'MOCK CANCEL MESSAGE'
     };
 
+    const mockMessage = Substitute.for<Message>();
+
+    const mockAnnouncementChannel = Substitute.for<TextChannel>();
+    mockAnnouncementChannel.send(Arg.any('string'), Arg.any()).resolves(mockMessage);
+
+    const mockDmChannel: SubstituteOf<DMChannel> = Substitute.for<DMChannel>();
+
     // Try to pre-fill this object as much as possible
     const mocks: MocksInterface = {
         // First export the convenience attributes
@@ -262,13 +269,13 @@ export default function setup(): MocksInterface {
         // Set up the mock for Discord User object backing our DraftUser
         mockDiscordUser: buildMockDiscordUser(DISCORD_USER_ID, USERNAME, NICKNAME, TAG),
 
-        mockAnnouncementChannel: Substitute.for<TextChannel>(),
+        mockAnnouncementChannel,
 
         // Set up the mock for the output channel (super helpful for validation)
-        mockDmChannel: Substitute.for<DMChannel>(),
+        mockDmChannel,
 
         // The message used to announce a draft
-        mockMessage: Substitute.for<Message>(),
+        mockMessage,
 
         mockResolver: mockResolver,
 
@@ -315,21 +322,17 @@ export default function setup(): MocksInterface {
 
     const mockDiscordResolver = Substitute.for<DiscordResolver>();
     mockResolver.discordResolver.returns(mockDiscordResolver);
-    mockDiscordResolver.resolveUser(Arg.any()).mimicks(id => generatedDiscordUsers[id]);
+    mockDiscordResolver.resolveUser(Arg.any('string')).mimicks(id => generatedDiscordUsers[id]);
     mockDiscordResolver.resolveUserAsync(Arg.any()).mimicks(async id => generatedDiscordUsers[id]);
     mockDiscordResolver.resolveGuildMember(Arg.any()).mimicks(id => generatedGuildMembers[id]);
     mockDiscordResolver.resolveGuildMemberFromTag(Arg.any()).mimicks(id => generatedGuildMembers[id]);
-    mockDiscordResolver.resolveMessageInAnnouncementChannel(Arg.any()).mimicks(async sessionId => sessionId === SESSION_ID ? mocks.mockMessage: undefined);
-    mockDiscordResolver.resolveMessage(Arg.any(), Arg.any()).resolves(mocks.mockMessage);
+    mockDiscordResolver.resolveMessageInAnnouncementChannel(Arg.any()).mimicks(async sessionId => sessionId === SESSION_ID ? mockMessage: undefined);
+    mockDiscordResolver.resolveMessage(Arg.any(), Arg.any()).resolves(mockMessage);
     mockDiscordResolver.fetchGuildMember(Arg.any()).mimicks(async id => generatedGuildMembers[id]);
 
     
     // Attach the output DM channel to the Discord User
     mocks.mockDiscordUser.createDM().resolves(mocks.mockDmChannel);
-
-    // Attach the message to the announcement channel
-    mocks.mockAnnouncementChannel.send(Arg.any()).resolves(mocks.mockMessage);
-    //mocks.mockAnnouncementChannel.send(Arg.is(arg => typeof arg === 'string')).resolves(mocks.mockMessage);
 
     const frozen = Object.freeze(mocks);
     builtMocks = frozen;

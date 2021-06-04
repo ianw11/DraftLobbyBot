@@ -25,7 +25,7 @@
     "@types/lowdb": "1.0.9",
     "@types/node": "14.14.19",
     "@types/ws": "7.2.6",
-    "discord.js": "12.3.1",
+    "discord.js": "12.5.3",
     "express": "4.17.1",
     "human-readable-ids": "1.0.4",
     "lowdb": "1.0.0",
