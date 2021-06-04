@@ -2,10 +2,11 @@
 "compilerOptions": {
     "esModuleInterop": true,
     "sourceMap":  true,
-    "target": "ES5",
-    "lib": [ "es2016" ],
+    "target": "ES2019",
+    "lib": [ "es2019" ],
     "strict": true,
     "resolveJsonModule": true,
+    "moduleResolution": "node",
     "outDir": "build"
 },
 "include": [
