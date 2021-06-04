@@ -15,6 +15,7 @@ module.exports = {
       'plugin:@typescript-eslint/recommended',
     ],
     rules: {
-        'no-throw-literal': 2
+        'no-throw-literal': 2,
+        indent: ["error", 4, {"SwitchCase": 1}]
     }
   };

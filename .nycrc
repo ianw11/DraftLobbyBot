@@ -1,0 +1,18 @@
+{
+    "cache": false,
+    "include": [
+        "**/*.ts"
+    ],
+    "exclude": [
+        "coverage/",
+        "node_modules/",
+        "build/**",
+        "test/"
+    ],
+    "sourceMap": true,
+    "reporter": [
+        "html",
+        "text"
+    ],
+    "all": true
+}

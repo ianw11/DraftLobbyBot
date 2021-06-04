@@ -66,18 +66,47 @@ describe('test parsing date', () => {
     it('fails to parse a bad time', () => {
         const badTimeString = "5:";
 
-        expect(parseDate([badTimeString])).to.throw;
+        expect(() => parseDate([badTimeString])).to.throw("Unable to parse date");
+    });
+
+    it('fails to parse a second bad time', () => {
+        const badTimeString = "a";
+        
+        expect(() => parseDate([badTimeString])).to.throw("I can't understand the time you gave me");
+    });
+
+    it('fails to parse a third bad time', () => {
+        const badTimeString = ["8", "22"];
+
+        expect(() => parseDate(badTimeString)).to.throw("I couldn't understand your date, I accept `mm dd hh:mm` (like 9 28 18:30 for Sept 18 at 6:30pm) or just `hh:mm` to use the current date");
     });
 
     it('parses a full user date string', () => {
-        const userInput = "8 22 17:30";
+        const userInput = ["8", "22", "17:30"];
 
-        const date = parseDate([userInput]);
+        const date = parseDate(userInput);
 
         expect(date.getMonth()).equals(8 - 1); // -1 because _apparently_ months are 0-indexed
         expect(date.getDate()).equals(22);
         expect(date.getHours()).equals(17);
         expect(date.getMinutes()).equals(30);
+    });
+
+    if ((new Date()).getMonth() !== 1) {
+        it('parses a date set in the next year', () => {
+            const now = new Date();
+
+            const userInput = ["1", "22", "17:30"];
+            const date = parseDate(userInput);
+
+            expect(date.getFullYear()).equals(now.getFullYear() + 1);
+        });
+    }
+
+    it('clears the date by returning undefined', () => {
+        const userInput = 'clear';
+        const date = parseDate([userInput]);
+        expect(date).to.be.undefined;
     });
 });
 

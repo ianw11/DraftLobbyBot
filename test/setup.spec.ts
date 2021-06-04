@@ -7,7 +7,7 @@ import Context from "../src/commands/models/Context";
 import { IUserView } from "../src/database/UserDBSchema";
 import { InMemoryUserView } from "../src/database/inmemory/InMemoryUserView";
 import { Resolver, DiscordResolver } from "../src/models/types/ResolverTypes";
-import { SessionConstructorParameter } from "../src/database/SessionDBSchema";
+import { SessionConstructorParameter, SessionDBSchema, SessionParametersDB } from "../src/database/SessionDBSchema";
 import Session from "../src/models/Session";
 import { DraftUserId, SessionId } from "../src/models/types/BaseTypes";
 
@@ -59,13 +59,14 @@ export interface MocksInterface {
     mockSession: SubstituteOf<Session>,
     mockUserView: IUserView,
     mockDraftUser: DraftUser,
-    mockResolver: Resolver,
+    mockResolver: SubstituteOf<Resolver>,
     mockAnnouncementChannel: SubstituteOf<TextChannel>,
     mockDiscordUser: SubstituteOf<User>,
     mockDmChannel: SubstituteOf<DMChannel>,
     mockMessage: SubstituteOf<Message>,
     userGenerator: () => SubstituteOf<DraftUser>,
-    createMockUserView: () => IUserView
+    createMockUserView: () => IUserView,
+    mockSessionDBSchema: SessionDBSchema
 }
 
 const INJECTED_PARAMS: ShallowEnvRequiredFields = {
@@ -74,7 +75,10 @@ const INJECTED_PARAMS: ShallowEnvRequiredFields = {
 
 // The ENV object made available to tests
 
-export const mockEnv: ENV = {...DEFAULTS, ...INJECTED_PARAMS};
+export const mockEnv: ENV = {...DEFAULTS, ...INJECTED_PARAMS, ...{log: (msg) => {
+    logLines.push(msg);
+    console.log(`[MOCKENV] [${logLines.length}] ${msg}`);
+}}};
 
 ////////////////////
 // TEST LIFECYCLE //
@@ -82,9 +86,12 @@ export const mockEnv: ENV = {...DEFAULTS, ...INJECTED_PARAMS};
 
 // These should be reset every single test
 let builtMocks: MocksInterface;
-let generatedUsers = {};
-let generatedDiscordUsers = {};
-let generatedGuildMembers = {};
+let generatedUsers: {[key: string]: SubstituteOf<DraftUser>} = {};
+let generatedDiscordUsers: {[key: string]: SubstituteOf<User>} = {};
+let generatedGuildMembers: {[key: string]: SubstituteOf<GuildMember>} = {};
+let logLines: string[] = [];
+
+export {logLines};
 
 // Execute before every test
 beforeEach(() => {
@@ -92,6 +99,7 @@ beforeEach(() => {
     generatedUsers = {};
     generatedDiscordUsers = {};
     generatedGuildMembers = {};
+    logLines = [];
 });
 
 ///////////////////////////////////////////////////
@@ -105,11 +113,12 @@ function buildUserView(_id?: string, nickname?: string): IUserView {
     return new InMemoryUserView(DISCORD_SERVER_ID, id);
 }
 
-function buildMockDiscordUser(id: string, username: string, nickname?: string, tag?: string): SubstituteOf<User> {
+function buildMockDiscordUser(id: string, username: string, nickname?: string, tag?: string, bot?: boolean): SubstituteOf<User> {
     const user = Substitute.for<User>();
     user.id.returns(id);
     user.username.returns(username);
     user.tag.returns(tag ? tag : `${username}#0000`);
+    user.bot.returns(bot || false);
 
     generatedDiscordUsers[id] = user;
 
@@ -129,14 +138,30 @@ function buildMockDiscordGuildMember(id: string, nickname?: string): SubstituteO
     return member;
 }
 
+export function turnMockDiscordUserIntoBot(id: string): SubstituteOf<User> {
+    const oldUser = generatedDiscordUsers[id];
+    if (!oldUser) {
+        throw new Error(`Id ${id} doesn't exist in generatedDiscordUsers`);
+    }
+    const oldGuildMember = generatedGuildMembers[id];
+
+    return buildMockDiscordUser(oldUser.id, oldUser.username, oldGuildMember.nickname, oldUser.tag, true);
+}
+
 // This method is also exported!
 export function buildContext(parameters: string[] = ["NO_PARAMS"]): Context {
+    // Because this is exported, there's a chance the mocks haven't yet been built
+    const mocks = builtMocks ?? setup();
+
     const draftServer = Substitute.for<DraftServer>();
+    draftServer.resolver.returns(mocks.mockResolver);
+
     const message = Substitute.for<Message>();
+
     return new Context({
         env: mockEnv,
         draftServer: draftServer,
-        user: builtMocks.mockDiscordUser,
+        user: mocks.mockDiscordUser,
         parameters: parameters,
         message: message});
 }
@@ -160,8 +185,8 @@ an unlimited amount of DraftUsers with always increasing ids.
 function* uniqueUserGenerator(_userId?: DraftUserId, name?: string, nickname?: string): Generator<SubstituteOf<DraftUser>> {
     while (true) {
         const draftUser: SubstituteOf<DraftUser> = Substitute.for<DraftUser>();
-        const id = idGenerator.next();
-        const userId = _userId ? _userId : `ID_BULK_USER_${id.value}`;
+        const id = idGenerator.next().value;
+        const userId = _userId ? _userId : `ID_BULK_USER_${id}`;
         draftUser.getUserId().returns(userId);
         const username = name ? name : `BULK_USER_${id}`;
         draftUser.getDisplayName().returns(username);
@@ -206,6 +231,20 @@ export default function setup(): MocksInterface {
 
     const mockResolver = Substitute.for<Resolver>();
 
+    const mockSessionParameters: SessionConstructorParameter & SessionParametersDB = {
+        name: 'MOCK SESSION',
+        unownedSessionName: 'MOCK UNOWNED SESSION NAME',
+        description: 'MOCK SESSION DESCRIPTION',
+        fireWhenFull: false,
+        sessionCapacity: 8,
+        templateUrl: 'MOCK SESSION URL',
+        ownerId: DISCORD_USER_ID,
+
+        sessionConfirmMessage: 'MOCK CONFIRM MESSAGE',
+        sessionWaitlistMessage: 'MOCK WAITLIST MESSAGE',
+        sessionCancelMessage: 'MOCK CANCEL MESSAGE'
+    };
+
     // Try to pre-fill this object as much as possible
     const mocks: MocksInterface = {
         // First export the convenience attributes
@@ -213,18 +252,7 @@ export default function setup(): MocksInterface {
         userGenerator: () => generateBasicUser(),
 
         // Then prep the Session
-        mockSessionParameters: {
-            name: 'MOCK SESSION',
-            description: 'MOCK SESSION DESCRIPTION',
-            fireWhenFull: false,
-            sessionCapacity: 8,
-            templateUrl: 'MOCK SESSION URL',
-            ownerId: DISCORD_USER_ID,
-
-            sessionConfirmMessage: 'MOCK CONFIRM MESSAGE',
-            sessionWaitlistMessage: 'MOCK WAITLIST MESSAGE',
-            sessionCancelMessage: 'MOCK CANCEL MESSAGE'
-        },
+        mockSessionParameters,
         mockSession: Substitute.for<Session>(),
 
         mockUserView: new InMemoryUserView(DISCORD_SERVER_ID, DISCORD_USER_ID),
@@ -244,23 +272,41 @@ export default function setup(): MocksInterface {
 
         mockResolver: mockResolver,
 
-        createMockUserView: () => buildUserView()
+        createMockUserView: () => buildUserView(),
+
+        mockSessionDBSchema: {
+            serverId: "MOCK_DB_SERVER_ID",
+            sessionId: "MOCK_DB_SESSION_ID",
+            ownerId: "MOCK_DB_OWNER_ID",
+            joinedPlayerIds: [],
+            waitlistedPlayerIds: [],
+            sessionClosed: false,
+            sessionParameters: mockSessionParameters
+        }
     };
 
     // With the main mocks done, hook up the overrides...
 
     // Finish out the Session object (pull it out and override everything)
-    const {mockSession, mockSessionParameters} = mocks;
+    const {mockSession} = mocks;
     mockSession.sessionId.returns(SESSION_ID);
-    mockSession.getNameAsync().resolves(mockSessionParameters.name);
-    mockSession.getDescription().returns(mockSessionParameters.description);
-    mockSession.getFireWhenFull().returns(mockSessionParameters.fireWhenFull);
-    mockSession.getSessionCapacity().returns(mockSessionParameters.sessionCapacity);
+    mockSession.getNameAsync().mimicks(async () => mockSessionParameters.name);
+    mockSession.setName(Arg.any()).mimicks(async name => { mockSessionParameters.name = name; });
+    mockSession.getDescription().mimicks(() => mockSessionParameters.description);
+    mockSession.setDescription(Arg.any()).mimicks(async description => { mockSessionParameters.description = description; });
+    mockSession.setDate(Arg.any()).mimicks(async (date) => { mockSessionParameters.date = date; });
+    mockSession.getFireWhenFull().mimicks(() => mockSessionParameters.fireWhenFull);
+    mockSession.setFireWhenFull(Arg.any()).mimicks(async fire => { mockSessionParameters.fireWhenFull = fire; });
+    mockSession.getSessionCapacity().mimicks(() => mockSessionParameters.sessionCapacity);
+    mockSession.setSessionCapacity(Arg.any()).mimicks(async capacity => { mockSessionParameters.sessionCapacity = capacity; });
     mockSession.getNumConfirmed().returns(NUM_CONFIRMED);
     mockSession.getNumWaitlisted().returns(NUM_IN_WAITLIST);
     mockSession.getConfirmedMessage().resolves(mockSessionParameters.sessionConfirmMessage);
     mockSession.getWaitlistMessage().resolves(mockSessionParameters.sessionWaitlistMessage);
     mockSession.getCancelledMessage().resolves(mockSessionParameters.sessionCancelMessage);
+    mockSession.setTemplateUrl(Arg.any()).mimicks(url => { mockSessionParameters.templateUrl = url; });
+    mockSession.getWaitlistIndexOf(Arg.any()).mimicks(userId => userId === DISCORD_USER_ID ? 0 : 3);
+    mockSession.toSimpleString().resolves("SIMPLE STRING");
 
 
     mockResolver.env.returns(mockEnv);
@@ -273,8 +319,9 @@ export default function setup(): MocksInterface {
     mockDiscordResolver.resolveUserAsync(Arg.any()).mimicks(async id => generatedDiscordUsers[id]);
     mockDiscordResolver.resolveGuildMember(Arg.any()).mimicks(id => generatedGuildMembers[id]);
     mockDiscordResolver.resolveGuildMemberFromTag(Arg.any()).mimicks(id => generatedGuildMembers[id]);
-    mockDiscordResolver.resolveMessageInAnnouncementChannel(Arg.any()).resolves(mocks.mockMessage);
+    mockDiscordResolver.resolveMessageInAnnouncementChannel(Arg.any()).mimicks(async sessionId => sessionId === SESSION_ID ? mocks.mockMessage: undefined);
     mockDiscordResolver.resolveMessage(Arg.any(), Arg.any()).resolves(mocks.mockMessage);
+    mockDiscordResolver.fetchGuildMember(Arg.any()).mimicks(async id => generatedGuildMembers[id]);
 
     
     // Attach the output DM channel to the Discord User

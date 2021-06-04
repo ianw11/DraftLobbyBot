@@ -14,9 +14,24 @@ export interface DBDriver {
     getAllSessions(): ISessionView[];
 }
 
+export abstract class DBDriverBase implements DBDriver {
+    ////////////////////
+    // DBDriver stubs //
+    ////////////////////
+    
+    abstract getOrCreateUserView(serverId: ServerId, userId: DraftUserId): IUserView;
+    abstract getAllUsersFromServer(serverId: ServerId): IUserView[];
+    abstract deleteUserFromDatabase(serverId: ServerId, userId: DraftUserId): void;
 
+    abstract createSession(serverId: ServerId, sessionId: SessionId, env: ENV, params?: SessionConstructorParameter): ISessionView;
+    abstract getSessionView(serverId: ServerId, sessionId: SessionId): ISessionView;
+    abstract deleteSessionFromDatabase(serverId: ServerId, sessionId: SessionId): void;
+    abstract getAllSessions(): ISessionView[];
 
-export abstract class DBDriverBase {
+    ////////////////////
+    // Shared Methods //
+    ////////////////////
+
     buildUserFromScratch(serverId: ServerId, userId: DraftUserId): UserDBSchema {
         return {serverId: serverId, userId: userId, joinedSessionIds: [], waitlistedSessionIds: []};
     }

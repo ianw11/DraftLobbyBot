@@ -13,6 +13,12 @@ export function parseDate(parameters: string[]): Date | undefined {
     let date: Date | undefined;
     if (parameters.length === 1) {
         const singleParameter = parameters[0];
+        
+        // This accepts any of:
+        // - "clear" (the only thing that returns undefined and indicates clearing the date)
+        // - "hh:mm" aka the time (within the current day)
+        // - a full on UTC time string
+
         if (singleParameter.toLocaleLowerCase() === 'clear') {
             // No-op
         } else if (singleParameter.length <= 5) {
@@ -44,6 +50,13 @@ export function parseDate(parameters: string[]): Date | undefined {
 
         const dateStr = `${year}-${month}-${day}T${hour}:${minute}:${seconds}`;
         date = new Date(dateStr);
+    } else {
+        throw new Error("I couldn't understand your date, I accept `mm dd hh:mm` (like 9 28 18:30 for Sept 18 at 6:30pm) or just `hh:mm` to use the current date");
+    }
+
+    // Check to see if the Date is actually the error "Invalid Date"
+    if (date && isNaN(date.getDay())) {
+        throw new Error("Unable to parse date");
     }
 
     return date;

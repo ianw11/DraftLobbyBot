@@ -314,7 +314,7 @@ export default function main(env: ENV): void {
     client.on('messageReactionRemove', onReaction(env, dbDriver, async (draftUser, session) => await session.removePlayer(draftUser)));
 
     if (DISCORD_BOT_TOKEN) {
-        // Yes, this is THE login call
+        // Yes, this is THE login call. If this is successful, it triggers onReady
         client.login(DISCORD_BOT_TOKEN);
     } else {
         console.error("Unable to login - DISCORD_BOT_TOKEN was not properly set up");

@@ -1,7 +1,6 @@
 import Command from "./models/Command";
 import Context from "./models/Context";
 import { parseDate } from "../Utils";
-import Session from "../models/Session";
 
 export default class EditSessionCommand implements Command {
     static readonly singleton = new EditSessionCommand();
@@ -21,40 +20,38 @@ export default class EditSessionCommand implements Command {
             throw new Error("Editing a session is done `edit <attribute> <value>` for example: `edit name My Cool Draft`.  For more information ask me for help from a server");
         }
 
-        const field = context.parameters.shift();
-        if (!field) {
-            throw new Error("Missing: the field you want to edit.  Check the help command for more information");
-        }
+        const field = context.parameters.shift() as string;
+
         const value = context.parameters.join(' ');
         const valueLower = value.toLocaleLowerCase();
         switch (field.toLocaleLowerCase()) {
             // When updating this switch statement, be sure to also
             // update the help text in the help() method down below!!
             case 'name':
-                session.setName(value);
+                await session.setName(value);
                 break;
             case 'max':
             case 'num':
             case 'players':
             case 'capacity':
-                session.setSessionCapacity(Number.parseInt(value));
+                await session.setSessionCapacity(Number.parseInt(value));
                 break;
             case 'd':
             case 'description':
-                session.setDescription(value);
+                await session.setDescription(value);
                 break;
             case 'date':
-                this.updateDate(context, session);
+                await session.setDate(parseDate(context.parameters));
                 break;
             case 'fire':
             case 'full':
-                session.setFireWhenFull(valueLower === 'true');
+                await session.setFireWhenFull(valueLower === 'true');
                 break;
             case 'url':
                 session.setTemplateUrl(value);
                 break;
             default:
-                break;
+                throw new Error("Hmm, I don't know what to edit or update");
         }
     }
 
@@ -68,13 +65,5 @@ export default class EditSessionCommand implements Command {
 
     usageExample(invocation: string): string {
         return `${invocation} d This is my new decription`;
-    }
-
-    private updateDate(context: Context, session: Session) {
-        const date = parseDate(context.parameters);
-        if (!date) {
-            throw new Error("I couldn't parse your date, I accept `mm dd hh:mm` (like 9 28 18:30 for Sept 18 at 6:30pm) or just `hh:mm` to use the current date");
-        }
-        session.setDate(date);
     }
 }

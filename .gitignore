@@ -10,3 +10,7 @@ SessionTemplates.json
 
 data/*
 !data/.includeme
+
+# Istanbul (the 'nyc' command) coverage output
+coverage/
+.nyc_output/

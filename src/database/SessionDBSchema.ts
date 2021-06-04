@@ -1,28 +1,6 @@
 import { ENV } from "../env/env";
 import { DraftUserId, ServerId, SessionId } from "../models/types/BaseTypes";
 
-function buildDefaultSessionParameters(env: ENV): TemplateAndDBSessionParameters {
-    return {
-        name: env.DEFAULT_SESSION_NAME,
-        unownedSessionName: env.DEFAULT_UNOWNED_SESSION_NAME,
-        sessionCapacity: env.DEFAULT_SESSION_CAPACITY,
-        description: env.DEFAULT_SESSION_DESCRIPTION,
-        fireWhenFull: env.DEFAULT_SESSION_FIRE_WHEN_FULL,
-
-        sessionConfirmMessage: env.DEFAULT_SESSION_CONFIRM_MESSAGE,
-        sessionWaitlistMessage: env.DEFAULT_SESSION_WAITLIST_MESSAGE,
-        sessionCancelMessage: env.DEFAULT_SESSION_CANCELLED_MESSAGE,
-        templateUrl: env.DEFAULT_TEMPLATE_URL
-    };
-}
-
-export function buildSessionParams(env: ENV, params?: SessionConstructorParameter): SessionParametersWithSugar {
-    return {
-        ...buildDefaultSessionParameters(env),
-        ...(params || {})
-    };
-}
-
 /*
     This interface is what defines the database
 */
@@ -118,7 +96,7 @@ export class ReadonlySessionView implements ISessionView {
         throw new Error('READ-ONLY');
     }
     getNumConfirmed(): number {
-        throw new Error('READ-ONLY');
+        return this.joinedPlayerIds.length;
     }
     addToWaitlist(): void {
         throw new Error('READ-ONLY');
@@ -130,7 +108,7 @@ export class ReadonlySessionView implements ISessionView {
         throw new Error('READ-ONLY');
     }
     getNumWaitlisted(): number {
-        throw new Error('READ-ONLY');
+        return this.waitlistedPlayerIds.length;
     }
     get serverId(): string {
         return this.schema.serverId;
@@ -153,6 +131,32 @@ export class ReadonlySessionView implements ISessionView {
     get ownerId(): string|undefined {
         return this.schema.ownerId;
     }
+}
+
+/*
+    A couple methods to help with building Sessions
+*/
+
+function buildDefaultSessionParameters(env: ENV): TemplateAndDBSessionParameters {
+    return {
+        name: env.DEFAULT_SESSION_NAME,
+        unownedSessionName: env.DEFAULT_UNOWNED_SESSION_NAME,
+        sessionCapacity: env.DEFAULT_SESSION_CAPACITY,
+        description: env.DEFAULT_SESSION_DESCRIPTION,
+        fireWhenFull: env.DEFAULT_SESSION_FIRE_WHEN_FULL,
+
+        sessionConfirmMessage: env.DEFAULT_SESSION_CONFIRM_MESSAGE,
+        sessionWaitlistMessage: env.DEFAULT_SESSION_WAITLIST_MESSAGE,
+        sessionCancelMessage: env.DEFAULT_SESSION_CANCELLED_MESSAGE,
+        templateUrl: env.DEFAULT_TEMPLATE_URL
+    };
+}
+
+export function buildSessionParams(env: ENV, params?: SessionConstructorParameter): SessionParametersWithSugar {
+    return {
+        ...buildDefaultSessionParameters(env),
+        ...(params || {})
+    };
 }
 
 /*

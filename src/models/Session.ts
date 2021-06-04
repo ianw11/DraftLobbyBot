@@ -26,12 +26,9 @@ export default class Session {
     }
 
     get sessionId(): SessionId {
-        if (!this.data.sessionId) {
-            throw new Error("Session doesn't have session id");
-        }
         return this.data.sessionId;
     }
-    set sessionId(sessionId: SessionId) {
+    set sessionId(_sessionId: SessionId) {
         throw new Error("Session Id can only be set via resetMessage()");
     }
 
@@ -210,7 +207,8 @@ export default class Session {
         const newOwnerId = newOwner.getUserId();
 
         const joinedUsers = this.data.joinedPlayerIds;
-        if (!joinedUsers.includes(newOwnerId)) {
+        const waitlistedUsers = this.data.waitlistedPlayerIds;
+        if (!joinedUsers.includes(newOwnerId) && !waitlistedUsers.includes(newOwnerId)) {
             throw new Error(`Unable to change owner to somebody that hasn't joined the session - have ${displayName} join first then retry`);
         }
 
@@ -273,8 +271,8 @@ export default class Session {
     // Output Formatting Methods //
     ///////////////////////////////
 
-    async getConfirmedMessage(overrides?: Record<string, string>): Promise<string> {
-        return await this.replaceMessage(this.data.sessionParameters.sessionConfirmMessage, overrides);
+    async getConfirmedMessage(overrides?: Record<string, string>, regenerateUrl?: boolean): Promise<string> {
+        return await this.replaceMessage(this.data.sessionParameters.sessionConfirmMessage, overrides, regenerateUrl);
     }
 
     async getWaitlistMessage(): Promise<string> {
@@ -285,8 +283,8 @@ export default class Session {
         return await this.replaceMessage(this.data.sessionParameters.sessionCancelMessage);
     }
 
-    private async replaceMessage(msg: string, overrides = {}): Promise<string> {
-        return replaceFromDict(msg, "%", {...{NAME: await this.getNameAsync(), URL: this.getUrl()}, ...overrides});
+    private async replaceMessage(msg: string, overrides = {}, regenerateUrl?: boolean): Promise<string> {
+        return replaceFromDict(msg, "%", {...{NAME: await this.getNameAsync(), URL: this.getUrl(regenerateUrl)}, ...overrides});
     }
 
     /////////////////////////

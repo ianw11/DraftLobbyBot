@@ -2,7 +2,7 @@ import { expect } from '../chaiAsync.spec';
 import { replaceStringWithEnv } from '../../src/env/env';
 import { mockEnv } from '../setup.spec';
 
-describe('test Env', () => {
+describe('test replaceStringWithEnv()', () => {
     it('modifies the line', () => {
 
         const input = `Send %PREFIX%help to see help`;

@@ -1,7 +1,7 @@
 import { Client } from 'discord.js';
 import express, { Request, Response } from 'express';
 import { Server } from 'http';
-import { Commands } from '../commands';
+import { getCommand } from '../commands';
 import Context from '../commands/models/Context';
 import { ENV } from '../env/env';
 import DraftServer from '../models/DraftServer';
@@ -37,7 +37,7 @@ export class ExpressDriver {
         const app = express();
     
         app.get('/', async (req, res) => {
-            res.status(200).send("This is a-ok");
+            res.status(200).send("DraftLobbyBot is a-ok");
         });
 
         app.get('*', this.handleRequest.bind(this));
@@ -81,8 +81,7 @@ export class ExpressDriver {
     private async handleRequest(req: Request, res: Response): Promise<void> {
         try {
             const commandStr = req.path.split('/')[1];
-            const command = Commands[commandStr];
-
+            const command = getCommand(commandStr);
             if (!command) {
                 res.status(404).send();
                 return;
@@ -104,10 +103,12 @@ export class ExpressDriver {
 
             const context = await this.createContext(serverId, userId, args);
 
+            // Finally execute the command
             await command.execute(context);
             res.status(200).send("Success");
         } catch (e) {
             res.status(500).send(e.message);
+            this.env.log(e);
         }
     }
 }

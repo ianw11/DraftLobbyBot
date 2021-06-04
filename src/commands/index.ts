@@ -34,3 +34,7 @@ export default Mapping;
 
 const Commands = Mapping;
 export {Commands};
+
+export function getCommand(commandStr: string): Command | undefined {
+    return Commands[commandStr];
+}
