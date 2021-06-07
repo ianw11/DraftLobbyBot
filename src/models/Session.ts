@@ -312,9 +312,9 @@ export default class Session {
     }
 
     async toSimpleString(): Promise<string> {
-        const {description} = this.data.sessionParameters;
-        const date = this.data.sessionParameters.date;
-        return `**${await this.getNameAsync()}** ${date ? `- starts at ${date.toString()} ` : ''} || ${description}`;
+        const name = await this.getNameAsync();
+        const {description, date} = this.data.sessionParameters;
+        return `**${name}** ${date ? `- starts at ${date.toString()} ` : ''} || ${description}`;
     }
 
     async getEmbed(provideOwnerInformation?: boolean): Promise<MessageEmbed> {

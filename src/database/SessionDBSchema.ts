@@ -23,8 +23,8 @@ export interface SessionDBSchema {
 /////////////////////////////////////////
 
 /*
-    This interface exists in the database (as a child object), but it can also be generated from ENV (config files) and
-    is thus exposed so ENV can work with it.
+    This interface exists in the database (as a child object),
+    but it can also be generated from ENV (config files) and is thus exposed so ENV can work with it.
 */
 export interface TemplateAndDBSessionParameters {
     name: string;
@@ -43,7 +43,8 @@ export interface TemplateAndDBSessionParameters {
 
 /*
     This interface ALSO exists in the database and is an extension of TemplateSessionParameters and act _like_ parameters...
-    BUT the interface is not exposed/exported (is private to this file) so it can't be overridden by ENV/config files
+    BUT the interface is not exposed/exported (is private to this file) so it can't be overridden by ENV/config files,
+    because the value needs to be undefined for certain parts to work.
 */
 interface GeneratedSessionParameters {
     _generatedUrl?: string;

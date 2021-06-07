@@ -1,6 +1,6 @@
 import { expect } from '../chaiAsync.spec';
 import { replaceStringWithEnv } from '../../src/env/env';
-import { mockEnv } from '../setup.spec';
+import { mockEnv } from '../TestHelpers.spec';
 
 describe('test replaceStringWithEnv()', () => {
     it('modifies the line', () => {

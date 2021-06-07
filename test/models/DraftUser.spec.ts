@@ -3,7 +3,8 @@ import {assert, expect} from 'chai';
 import { MessageOptions } from 'discord.js';
 import { IUserView } from '../../src/database/UserDBSchema';
 import DraftUser from '../../src/models/DraftUser';
-import setup, { MocksInterface, MocksConstants, mockConstants } from '../setup.spec';
+import setup, { MocksInterface } from '../setup.spec';
+import { mockConstants, MocksConstants } from '../TestHelpers.spec';
 
 // I actually liked mockito better than substitute,
 // watch this link in case they ever merge the fix
@@ -176,7 +177,12 @@ describe("Test DraftUser", () => {
             await user.addedToSession(mocks.mockSession);
             await user.addedToWaitlist(mocks.mockSession);
             await user.listSessions();
-            mockDmChannel.received(1).send('\n**Sessions you are confirmed for:**\n- SIMPLE STRING\n**Sessions you are waitlisted for:**\n- SIMPLE STRING || You are in position 1 of 3\n', undefined);
+
+            const sessionName = await mocks.mockSession.getNameAsync();
+            const sessionDescription = mocks.mockSession.getDescription();
+            const sessionInfoRow = `- **${sessionName}**  || ${sessionDescription}`;
+            const expected = `\n**Sessions you are confirmed for:**\n${sessionInfoRow}\n**Sessions you are waitlisted for:**\n${sessionInfoRow} || You are in position 1 of 3\n`;
+            mockDmChannel.received(1).send(expected, undefined);
         });
 
         it('can fail to print session info when no session is created', async () => {

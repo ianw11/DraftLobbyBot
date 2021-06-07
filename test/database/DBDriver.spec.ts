@@ -2,7 +2,8 @@ import { DBDriverBase } from "../../src/database/DBDriver";
 import { LowdbDriver } from "../../src/database/lowdb/LowdbDriver";
 import { InMemoryDriver } from "../../src/database/inmemory/InMemoryDriver";
 import { expect } from "../chaiAsync.spec";
-import setup, { mockEnv } from "../setup.spec";
+import setup from "../setup.spec";
+import { mockEnv } from "../TestHelpers.spec";
 
 describe("Test DBDriver", () => {
 

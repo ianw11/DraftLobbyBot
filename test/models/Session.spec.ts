@@ -1,10 +1,11 @@
 import {expect, assert} from "../chaiAsync.spec";
-import setup, { MocksInterface, mockConstants, mockEnv, turnMockDiscordUserIntoBot, logLines } from "../setup.spec";
+import setup, { MocksInterface } from "../setup.spec";
 import Session from "../../src/models/Session";
 import { Arg, SubstituteOf } from "@fluffy-spoon/substitute";
 import DraftUser from "../../src/models/DraftUser";
 import { SessionParametersWithSugar, buildSessionParams, SessionConstructorParameter } from "../../src/database/SessionDBSchema";
 import { InMemorySessionView } from "../../src/database/inmemory/InMemorySessionView";
+import { getLogLines, mockConstants, mockEnv, turnMockDiscordUserIntoBot } from "../TestHelpers.spec";
 
 /*
 Could use testing:
@@ -377,7 +378,7 @@ describe("Test Session", () => {
         it('outputs if the desired channel is not present', async () => {
             resetSession({}, 'NON_DEFAULT_ID');
             await session.terminate();
-            assert(logLines.includes('Unable to delete message - not found in channel'));
+            assert(getLogLines().includes('Unable to delete message - not found in channel'));
         });
 
         it('notifies all joined and waitlisted people', async () => {

@@ -1,7 +1,8 @@
 import _EditSession from "../../src/commands/editSession";
-import setup, { buildContext, mockConstants, MocksInterface } from "../setup.spec";
+import setup, { buildContext, MocksInterface } from "../setup.spec";
 import { expect } from "../chaiAsync.spec";
 import { testCommand } from "./models/Command.spec";
+import { mockConstants } from "../TestHelpers.spec";
 
 const EditSession = new _EditSession();
 

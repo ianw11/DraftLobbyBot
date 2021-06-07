@@ -51,8 +51,10 @@ export default class DraftServer {
         return this.resolver.discordResolver.guild.id;
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     async sessionOwnerLeftServer(sessionOwner: DraftUser): Promise<void> {
-        await this.terminateSessionOwnedByUser(sessionOwner);
+        throw new Error('Make sure you hook this up to actually listen for Discord kicks/bans.  Then uncomment this.');
+        //await this.terminateSessionOwnedByUser(sessionOwner);
     }
 
     async startSessionOwnedByUser(sessionOwner: DraftUser): Promise<void> {
@@ -89,6 +91,10 @@ export default class DraftServer {
         const session = this.getSessionFromDraftUser(sessionOwner);
 
         if (session) {
+            if (session.ownerId !== sessionOwner.getUserId()) {
+                throw new Error('createdSessionId for User does not match ownerId for Session');
+            }
+
             // 1
             await session.terminate(started);
             if (session.sessionId) {

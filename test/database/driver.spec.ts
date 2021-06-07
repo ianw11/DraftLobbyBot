@@ -1,8 +1,8 @@
 import { expect } from "chai";
 import { IUserView } from "../../src/database/UserDBSchema";
-import { mockConstants, mockEnv } from '../setup.spec';
 import { LowdbDriver } from "../../src/database/lowdb/LowdbDriver";
 import { DBDriver } from "../../src/database/DBDriver";
+import { mockConstants, mockEnv } from "../TestHelpers.spec";
 
 
 const { DISCORD_SERVER_ID, DISCORD_USER_ID } = mockConstants;
