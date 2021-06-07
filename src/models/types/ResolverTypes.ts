@@ -72,9 +72,7 @@ export class DiscordResolver {
     }
 
     private createChannel(channelName: string): Promise<TextChannel> {
-        return this.guild.channels.create(channelName, {
-            type: 'text'
-        });
+        return this.guild.channels.create(channelName);
     }
 
     private findAnnouncementChannel(env: ENV): TextChannel | undefined {

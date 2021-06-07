@@ -4,6 +4,7 @@
     "sourceMap":  true,
     "target": "ES2019",
     "lib": [ "es2019" ],
+    "module": "commonjs",
     "strict": true,
     "resolveJsonModule": true,
     "moduleResolution": "node",

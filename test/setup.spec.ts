@@ -1,16 +1,16 @@
 import Substitute, { SubstituteOf, Arg } from "@fluffy-spoon/substitute";
 import DraftServer from "../src/models/DraftServer";
-import { DMChannel, User, Message, TextChannel } from "discord.js";
+import { DMChannel, User, Message, TextChannel, Guild, GuildMember } from "discord.js";
 import DraftUser from "../src/models/DraftUser";
 import Context from "../src/commands/models/Context";
 import { IUserView } from "../src/database/UserDBSchema";
 import { InMemoryUserView } from "../src/database/inmemory/InMemoryUserView";
 import { Resolver, DiscordResolver } from "../src/models/types/ResolverTypes";
-import { SessionConstructorParameter, SessionDBSchema } from "../src/database/SessionDBSchema";
+import { ISessionView, SessionConstructorParameter, SessionDBSchema } from "../src/database/SessionDBSchema";
 import Session from "../src/models/Session";
 import { DraftUserId } from "../src/models/types/BaseTypes";
 import { DBDriver } from "../src/database/DBDriver";
-import { buildDiscordResolver, buildMessage, buildMockDiscordUser, buildSession, buildUserView, generateBasicUser, generateCustomUser, getExistingSession, getExistingUser, mockConstants, mockEnv, MocksConstants, resetLogLines } from "./TestHelpers.spec";
+import { buildMockAnnouncementChannel, buildMockDiscordResolver, buildMockDiscordUser, buildMockGuild, buildMockMessage, buildMockSession, buildMockUserView, generateBasicUser, generateCustomUser, getExistingMockSession, getExistingMockUser, mockConstants, mockEnv, MocksConstants, resetLogLines } from "./TestHelpers.spec";
 
 /*
 WARNING: THAR BE DRAGONS IN THIS FILE
@@ -50,6 +50,8 @@ export interface MocksInterface {
     mockDiscordUser: SubstituteOf<User>,
     mockDmChannel: SubstituteOf<DMChannel>,
     mockMessage: SubstituteOf<Message>,
+    mockGuild: SubstituteOf<Guild>,
+    mockGuildMembers: SubstituteOf<GuildMember>[],
     userGenerator: () => SubstituteOf<DraftUser>,
     createMockUserView: () => IUserView,
     mockSessionDBSchema: SessionDBSchema
@@ -96,10 +98,13 @@ export default function setup(forceRegeneration = false): MocksInterface {
     const {DISCORD_SERVER_ID, SESSION_ID, DISCORD_USER_ID, USERNAME, NICKNAME, TAG} = mockConstants;
 
     const mockResolver = Substitute.for<Resolver>();
-    const [mockSession, mockSessionParameters] = buildSession({}, {overrideSessionId: SESSION_ID, resolver: mockResolver});
+    const [mockSession, mockSessionParameters] = buildMockSession({}, {overrideSessionId: SESSION_ID, resolver: mockResolver});
 
-    const mockAnnouncementChannel = Substitute.for<TextChannel>();
-    const mockMessage = buildMessage(SESSION_ID, mockAnnouncementChannel);
+    const mockMessage = buildMockMessage(SESSION_ID);
+    const mockAnnouncementChannel = buildMockAnnouncementChannel({announcementMessage: mockMessage});
+    mockMessage.channel.returns(mockAnnouncementChannel);
+
+    const [mockGuild, mockGuildMembers] = buildMockGuild({channel: mockAnnouncementChannel, message: mockMessage});
  
     // Try to pre-fill this object as much as possible
     const mocks: MocksInterface = {
@@ -125,12 +130,14 @@ export default function setup(forceRegeneration = false): MocksInterface {
 
         // The message used to announce a draft
         mockMessage,
+        mockGuild,
+        mockGuildMembers,
 
         mockResolver,
         mockDiscordResolver: Substitute.for<DiscordResolver>(),
         mockDBDriver: Substitute.for<DBDriver>(),
 
-        createMockUserView: buildUserView,
+        createMockUserView: buildMockUserView,
 
         mockSessionDBSchema: {
             serverId: "MOCK_DB_SERVER_ID",
@@ -146,17 +153,20 @@ export default function setup(forceRegeneration = false): MocksInterface {
     // With the main mocks done, hook up the overrides...
 
     const {mockDBDriver, mockDiscordUser, mockDmChannel} = mocks;
-    
-    // For some odd reason, we now HAVE to define 'undefined' as a parameter
-    mockAnnouncementChannel.send(Arg.any('string'), Arg.any('undefined')).resolves(mockMessage);
 
     mockResolver.env.returns(mockEnv);
-    mockResolver.resolveUser(Arg.any()).mimicks((userId: DraftUserId) => getExistingUser(userId));
-    mockResolver.resolveSession(Arg.any('string')).mimicks((sessionId) => getExistingSession(sessionId));
-    mockResolver.discordResolver.returns(buildDiscordResolver(mockMessage, mockAnnouncementChannel));
+    mockResolver.resolveUser(Arg.any()).mimicks((userId: DraftUserId) => getExistingMockUser(userId));
+    mockResolver.resolveSession(Arg.any('string')).mimicks((sessionId) => getExistingMockSession(sessionId));
+    mockResolver.discordResolver.returns(buildMockDiscordResolver(mockMessage, mockAnnouncementChannel));
     // Setup the DB Driver
     mockResolver.dbDriver.returns(mockDBDriver);
-    mockDBDriver.createSession(Arg.all()).returns(undefined);
+    //mockDBDriver.createSession(Arg.all()).returns(undefined);
+    mockDBDriver.getSessionView(Arg.all()).mimicks((serverId, sessionId) =>  {
+        const view = Substitute.for<ISessionView>();
+        view.serverId.returns(serverId);
+        view.sessionId.returns(sessionId);
+        return view;
+    });
     
     // Attach the output DM channel to the Discord User
     mockDiscordUser.createDM().resolves(mockDmChannel);

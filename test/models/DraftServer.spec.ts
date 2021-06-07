@@ -4,7 +4,7 @@ import DraftServer from "../../src/models/DraftServer";
 import DraftUser from "../../src/models/DraftUser";
 import { expect } from "../chaiAsync.spec";
 import setup, { MocksInterface } from "../setup.spec";
-import { buildMessage, buildSession, mockConstants, mockEnv, TESTSession } from "../TestHelpers.spec";
+import { buildMockMessage, buildMockSession, mockConstants, mockEnv, TESTSession } from "../TestHelpers.spec";
 
 describe('test DraftServer', () => {
     let mocks: MocksInterface;
@@ -49,7 +49,7 @@ describe('test DraftServer', () => {
         });
 
         it('will close any existing Sessions', async () => {
-            const oldSession = buildSession({ownerId: owner.getUserId()})[0];
+            const oldSession = buildMockSession({ownerId: owner.getUserId()})[0];
             owner.setCreatedSessionId(oldSession.sessionId);
             expect(oldSession.test_isSessionClosed()).equals(false);
 
@@ -67,7 +67,7 @@ describe('test DraftServer', () => {
         let session: TESTSession;
         beforeEach(() => {
             owner = mocks.userGenerator();
-            session = buildSession({ownerId: owner.getUserId()})[0];
+            session = buildMockSession({ownerId: owner.getUserId()})[0];
             owner.setCreatedSessionId(session.sessionId);
         });
 
@@ -96,7 +96,7 @@ describe('test DraftServer', () => {
 
         it('will not allow a Session to be closed if somehow the data gets messed up', async () => {
             // Foribly break the link
-            session = buildSession({ownerId: "FAKE_OWNER_ID"})[0];
+            session = buildMockSession({ownerId: "FAKE_OWNER_ID"})[0];
             owner.setCreatedSessionId(session.sessionId);
 
             await expect(server.startSessionOwnedByUser(owner)).rejectedWith('createdSessionId for User does not match ownerId for Session');
@@ -136,7 +136,7 @@ describe('test DraftServer', () => {
         });
 
         it("bot can close an unowned Session normally", async () => {
-            session = buildSession({}, {unownedSession: true})[0];
+            session = buildMockSession({}, {unownedSession: true})[0];
 
             await server.closeSession(session.sessionId);
 
@@ -149,7 +149,7 @@ describe('test DraftServer', () => {
         let session: TESTSession;
         beforeEach(() => {
             owner = mocks.userGenerator();
-            session = buildSession({ownerId: owner.getUserId()})[0];
+            session = buildMockSession({ownerId: owner.getUserId()})[0];
             owner.setCreatedSessionId(session.sessionId);
         });
 
@@ -171,7 +171,8 @@ describe('test DraftServer', () => {
         it('will return undefined if the message is not from the announcement channel', () => {
             const mockChannel = Substitute.for<TextChannel>();
             mockChannel.id.returns("FAKE")
-            const message = buildMessage("MESSAGE_ID", mockChannel);
+            const message = buildMockMessage("MESSAGE_ID");
+            message.channel.returns(mockChannel);
             expect(server.getSessionFromMessage(message)).is.undefined;
         });
     });

@@ -1,5 +1,5 @@
 import Substitute, { Arg, SubstituteOf } from "@fluffy-spoon/substitute";
-import { Guild, GuildMember, Message, TextChannel, User } from "discord.js";
+import { ChannelLogsQueryOptions, Collection, Guild, GuildChannel, GuildChannelManager, GuildMember, GuildMemberManager, Message, MessageManager, TextChannel, User, VoiceChannel } from "discord.js";
 import { InMemoryUserView } from "../src/database/inmemory/InMemoryUserView";
 import { ReadonlySessionView, SessionConstructorParameter, SessionParametersDB } from "../src/database/SessionDBSchema";
 import { IUserView } from "../src/database/UserDBSchema";
@@ -42,7 +42,7 @@ const INJECTED_PARAMS: ShallowEnvRequiredFields = {
 function mockLog() {
     return (msg: string): void => {
         logLines.push(msg);
-        console.log(`[MOCKENV] [${logLines.length} ${msg}]`);
+        console.log(`[MOCKENV] [${logLines.length}] ${msg}]`);
     };
 }
 
@@ -126,7 +126,7 @@ const customUserGenerator = uniqueUserGenerator(mockConstants.DISCORD_USER_ID, m
 export const generateBasicUser = (): SubstituteOf<DraftUser> => persistUser(basicUserGenerator.next().value as SubstituteOf<DraftUser>);
 export const generateCustomUser = (): SubstituteOf<DraftUser> => persistUser(customUserGenerator.next().value as SubstituteOf<DraftUser>);
 
-export function getExistingUser(id: DraftUserId): SubstituteOf<DraftUser> | undefined {
+export function getExistingMockUser(id: DraftUserId): SubstituteOf<DraftUser> | undefined {
     return generatedUsers[id];
 }
 
@@ -140,15 +140,28 @@ export function buildMockDiscordUser(id: string, username: string, nickname?: st
     generatedDiscordUsers[id] = user;
 
     // If we make a Discord User we will want to ALSO make sure there is a corresponding Discord Guild Member
-    buildMockDiscordGuildMember(id, nickname)
+    buildMockDiscordGuildMember(id, {nickname, tag, attachedUser: user});
 
     return user;
 }
 
-export function buildMockDiscordGuildMember(id: string, nickname?: string): SubstituteOf<GuildMember> {
+export type MockDiscordGuildMemberParams = {
+    attachedUser?: SubstituteOf<User>;
+    nickname?: string;
+    tag?: string;
+};
+export function buildMockDiscordGuildMember(id: string, params: MockDiscordGuildMemberParams = {}): SubstituteOf<GuildMember> {
     const member = Substitute.for<GuildMember>();
     member.id.returns(id);
-    member.nickname.returns(nickname);
+    member.nickname.returns(params.nickname);
+
+    if (params.attachedUser) {
+        member.user.returns(params.attachedUser);
+    } else {
+        const mockUser: SubstituteOf<User> = Substitute.for<User>();
+        member.user.returns(mockUser);
+        mockUser.tag.returns(params.tag ?? "");
+    }
 
     generatedGuildMembers[id] = member;
 
@@ -168,14 +181,14 @@ export function turnMockDiscordUserIntoBot(id: string): SubstituteOf<User> {
 
 
 
-export function buildUserView(_id?: string, nickname?: string): IUserView {
+export function buildMockUserView(_id?: string, nickname?: string): IUserView {
     const id = _id || `USER_VIEW_MOCK_${idGenerator.next().value}`;
     const {DISCORD_SERVER_ID, USERNAME} = mockConstants;
     buildMockDiscordUser(id, USERNAME, nickname);
     return new InMemoryUserView(DISCORD_SERVER_ID, id);
 }
 
-export function buildDiscordResolver(mockMessage: SubstituteOf<Message>, announcementChannel?: TextChannel): DiscordResolver {
+export function buildMockDiscordResolver(mockMessage: SubstituteOf<Message>, announcementChannel?: TextChannel): DiscordResolver {
     const resolver = Substitute.for<DiscordResolver>();
 
     resolver.resolveUser(Arg.any('string')).mimicks(id => generatedDiscordUsers[id]);
@@ -194,14 +207,138 @@ export function buildDiscordResolver(mockMessage: SubstituteOf<Message>, announc
     return resolver;
 }
 
-export function buildMessage(messageId: SessionId, announcementChannel?: TextChannel): SubstituteOf<Message> {
+export type MockGuildParams = {
+    channel: SubstituteOf<TextChannel>;
+    message: SubstituteOf<Message>;
+    includedMember?: SubstituteOf<User>;
+
+    forceFetch?: boolean;
+    announcementChannelMissingFromCache?: boolean;
+    resolveNonTextChannel?: 'voice'|'none';
+};
+export function buildMockGuild(params: MockGuildParams): [SubstituteOf<Guild>, SubstituteOf<GuildMember>[]] {
+    const guild = Substitute.for<Guild>();
+
+    const mockGuildMembers: SubstituteOf<GuildMember>[] = [];
+    for (let i = 0; i < 5; ++i) {
+        const suffix = idGenerator.next().value;
+        const mockGuildMember = buildMockDiscordGuildMember(`ID_BULK_GUILD_MEMBER_${suffix}`, {
+            nickname: `NICKNAME_${suffix}`,
+            tag: (i === 0) ? mockConstants.TAG : ''
+        });
+        mockGuildMembers.push(mockGuildMember);
+    }
+    if (params.includedMember) {
+        mockGuildMembers.push(generatedGuildMembers[params.includedMember.id]);
+    }
+
+    const mockGuildMemberCollection = Substitute.for<Collection<string, GuildMember>>();
+    mockGuildMemberCollection.each(Arg.any()).mimicks(callback => {
+        mockGuildMembers.forEach(cacheMember => {
+            callback(cacheMember, "GUILDMEMBERKEY", mockGuildMemberCollection);
+        });
+
+        return mockGuildMemberCollection;
+    });
+
+    const mockGuildMemberManager = Substitute.for<GuildMemberManager>();
+    mockGuildMemberManager.cache.returns(mockGuildMemberCollection);
+    mockGuildMemberManager.fetch(Arg.any('string')).mimicks(async userId => {
+        return mockGuildMembers.find(member => member.id === userId);
+    });
+    mockGuildMemberManager.resolve(Arg.any('string')).mimicks(userId => {
+        return mockGuildMembers.find(member => member.id === userId);
+    });
+
+
+    const mockGuildChannelCollection = Substitute.for<Collection<string, GuildChannel>>();
+    mockGuildChannelCollection.each(Arg.any()).mimicks(callback => {
+        callback(buildMockAnnouncementChannel({ announcementMessage: buildMockMessage('NEVER_USE_THIS'), channelName: "ILLEGAL CHANNEL NAME" }), "NEVER_USE_THIS", mockGuildChannelCollection);
+        callback(Substitute.for<VoiceChannel>(), "NEVER_USE_THIS", mockGuildChannelCollection);
+        if (!params.announcementChannelMissingFromCache) {
+            callback(params.channel, "CHANNELKEY", mockGuildChannelCollection);
+        }
+        return mockGuildChannelCollection;
+    });
+    
+    const mockGuildChannels = Substitute.for<GuildChannelManager>();
+    mockGuildChannels.resolve(Arg.any('string')).mimicks(() => {
+        if (params.resolveNonTextChannel === 'voice') {
+            const voiceChannel = Substitute.for<VoiceChannel>();
+            voiceChannel.type.returns('voice');
+            return voiceChannel;
+        } else if (params.resolveNonTextChannel === 'none') {
+            return;
+        }
+        if (!params.announcementChannelMissingFromCache) {
+            return params.channel;
+        }
+    });
+    mockGuildChannels.cache.returns(mockGuildChannelCollection);
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    mockGuildChannels.create(Arg.any('string')).mimicks((_name: string) => {
+        return new Promise(res => {
+            res(params.channel);
+        });
+    });
+
+
+    const mockGuildMessages = Substitute.for<MessageManager>();
+    mockGuildMessages.resolve(Arg.any('string')).mimicks(() => {
+        if (!params.forceFetch) {
+            return params.message;
+        }
+    });
+    mockGuildMessages.fetch(Arg.is<ChannelLogsQueryOptions>(() => true)).mimicks(async (options?: ChannelLogsQueryOptions): Promise<Collection<string, Message>> => {
+        const collection = Substitute.for<Collection<string, Message>>();
+        collection.get(Arg.is(id => id === options.around)).returns(params.message);
+        return collection;
+    });
+
+
+    guild.members.returns(mockGuildMemberManager);
+    guild.channels.returns(mockGuildChannels);
+
+    return [guild, mockGuildMembers];
+}
+
+export function buildMockMessage(messageId: SessionId): SubstituteOf<Message> {
     const message = Substitute.for<Message>();
 
     message.id.returns(messageId);
     message.react(Arg.any('string')).resolves(undefined);
-    message.channel.returns(announcementChannel);
+
+    // You need to attach the channel yourself.
 
     return message;
+}
+
+export type mockAnnouncementChannelParams = {
+    forceFetch?: boolean;
+    announcementMessage: SubstituteOf<Message>;
+    channelName?: string;
+}
+export function buildMockAnnouncementChannel(params: mockAnnouncementChannelParams): SubstituteOf<TextChannel> {
+    const channel = Substitute.for<TextChannel>();
+
+    // For some odd reason, we now HAVE to define 'undefined' as a parameter
+    channel.send(Arg.any('string'), Arg.any('undefined')).resolves(params.announcementMessage);
+    channel.name.returns(params.channelName ?? mockEnv.DRAFT_CHANNEL_NAME);
+    channel.type.returns('text');
+    channel.id.returns('ANNOUNCEMENT_CHANNEL_ID');
+
+    const messageManager = Substitute.for<MessageManager>();
+    channel.messages.returns(messageManager);
+    messageManager.resolve(Arg.any('string')).mimicks(() => {
+        if (!params.forceFetch) {
+            return params.announcementMessage;
+        }
+    });
+    const messageCollection = Substitute.for<Collection<string, Message>>();
+    messageManager.fetch(Arg.is<ChannelLogsQueryOptions>((x)=>x.around === params.announcementMessage.id)).resolves(messageCollection);
+    messageCollection.get(Arg.any('string')).returns(params.announcementMessage);
+
+    return channel;
 }
 
 export type TESTSession = SubstituteOf<Session> & {test_isSessionClosed?(): boolean};
@@ -210,7 +347,7 @@ export type AdditionalMockSessionOverrides = Partial<{
     resolver: Resolver,
     unownedSession: boolean
 }>;
-export function buildSession(overrideSessionParameters: Partial<SessionConstructorParameter & SessionParametersDB> = {}, additionalOverrides?: AdditionalMockSessionOverrides): [TESTSession, SessionConstructorParameter & SessionParametersDB] {
+export function buildMockSession(overrideSessionParameters: Partial<SessionConstructorParameter & SessionParametersDB> = {}, additionalOverrides?: AdditionalMockSessionOverrides): [TESTSession, SessionConstructorParameter & SessionParametersDB] {
     const sessionParameters = {...{
         name: 'MOCK SESSION',
         unownedSessionName: 'MOCK UNOWNED SESSION NAME',
@@ -276,6 +413,6 @@ export function buildSession(overrideSessionParameters: Partial<SessionConstruct
     return [session, sessionParameters];
 }
 
-export function getExistingSession(sessionId: SessionId): SubstituteOf<Session> | undefined {
+export function getExistingMockSession(sessionId: SessionId): SubstituteOf<Session> | undefined {
     return generatedSessions[sessionId];
 }
