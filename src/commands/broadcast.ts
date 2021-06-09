@@ -32,4 +32,8 @@ export default class BroadcastCommand implements Command {
     usage(invocation: string): string {
         return `${invocation} [all] <any message you want>`;
     }
+
+    usageExample(invocation: string): string {
+        return `${invocation} all Hello waitlist and confirmed, this message is in your DM`;
+    }
 }

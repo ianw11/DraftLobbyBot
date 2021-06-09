@@ -25,7 +25,13 @@ describe("Test Session", () => {
 
     function resetSession(overrideSessionParameters?: Partial<SessionConstructorParameter>, overrideSessionId?: string, unowned?: boolean) {
         const sessionParams: SessionParametersWithSugar = buildSessionParams(mockEnv, {...mocks.mockSessionParameters, ...(overrideSessionParameters || {})});
-        session = new Session(new InMemorySessionView(mockConstants.DISCORD_SERVER_ID, overrideSessionId ?? mockConstants.SESSION_ID, sessionParams, unowned ? undefined : (overrideSessionParameters?.ownerId || mockConstants.DISCORD_USER_ID)), mocks.mockResolver);
+        session = new Session(new InMemorySessionView(
+            mockConstants.DISCORD_SERVER_ID,
+            overrideSessionId ?? mockConstants.SESSION_ID,
+            sessionParams,
+            unowned ? undefined : (overrideSessionParameters?.ownerId || mockConstants.DISCORD_USER_ID)
+        ), mocks.mockResolver);
+        
         if (unowned) {
             mocks.mockDraftUser.setCreatedSessionId();
         } else {
@@ -182,6 +188,8 @@ describe("Test Session", () => {
                 user.received(1).addedToSession(session);
                 user.received(1).sessionClosed(session, true);
             });
+
+            mocks.mockMessage.received(1).delete();
         });
 
         it('will not let in the same person twice', async () => {
@@ -373,6 +381,7 @@ describe("Test Session", () => {
             await session.terminate();
             expect(session.canAddPlayers()).is.false;
             await expect(session.addPlayer(mocks.userGenerator())).rejected;
+            mocks.mockMessage.received(1).delete();
         });
 
         it('outputs if the desired channel is not present', async () => {
@@ -393,6 +402,94 @@ describe("Test Session", () => {
 
             allUsers.forEach(user => {
                 user.received(1).sessionClosed(Arg.any(), Arg.any());
+            });
+        });
+    });
+
+    describe('Testing broadcast', () => {
+        const broadcastPrefix = '`[BROADCAST] ';
+        
+        let ownedPrefix: string;
+        let unownedPrefix: string;
+        let joinedUsers: SubstituteOf<DraftUser>[];
+        let waitlistedUsers: SubstituteOf<DraftUser>[];
+        beforeEach(async () => {
+            await setupSession(session);
+        });
+
+        async function setupSession(session) {
+            joinedUsers = [];
+            waitlistedUsers = [];
+
+            await session.addPlayer(mocks.mockDraftUser);
+            for (let i = 0; i < (mocks.mockSessionParameters.sessionCapacity - 1); ++i) {
+                const user = mocks.userGenerator();
+                joinedUsers.push(user);
+                await session.addPlayer(user);
+            }
+            for (let i = 0; i < 5; ++i) {
+                const user = mocks.userGenerator();
+                waitlistedUsers.push(user);
+                await session.addPlayer(user);
+            }
+
+            expect(session.getNumWaitlisted()).equals(5);
+
+            const sessionName = mocks.mockSessionParameters.name;
+            ownedPrefix = `${broadcastPrefix}${mocks.mockDraftUser.getDisplayName()} (${sessionName})\`\n`;
+            const unownedSessionName = mocks.mockSessionParameters.unownedSessionName;
+            unownedPrefix = `${broadcastPrefix}EVENT ${unownedSessionName}\`\n`;
+        }
+
+        it('can broadcast to the joined players', async () => {
+            await session.broadcast('Test Broadcast');
+
+            mocks.mockDraftUser.received(0).sendDM(Arg.any());
+            joinedUsers.forEach(user => {
+                user.received(1).sendDM(`${ownedPrefix}Test Broadcast`);
+            });
+            waitlistedUsers.forEach(user => {
+                user.received(0).sendDM(Arg.any());
+            });
+        });
+        it('can broadcast to all players', async () => {
+            await session.broadcast('Test Broadcast', true);
+
+            mocks.mockDraftUser.received(0).sendDM(Arg.any());
+            joinedUsers.forEach(user => {
+                user.received(1).sendDM(`${ownedPrefix}Test Broadcast`);
+            });
+            waitlistedUsers.forEach(user => {
+                user.received(1).sendDM(`${ownedPrefix}Test Broadcast`);
+            });
+        });
+
+        it('can broadcast to the joined players from an unowned Session', async () => {
+            resetSession(undefined, undefined, true);
+            await setupSession(session);
+
+            await session.broadcast('Test Broadcast');
+
+            mocks.mockDraftUser.received(1).sendDM(`${unownedPrefix}Test Broadcast`);
+            joinedUsers.forEach(user => {
+                user.received(1).sendDM(`${unownedPrefix}Test Broadcast`);
+            });
+            waitlistedUsers.forEach(user => {
+                user.received(0).sendDM(Arg.any());
+            });
+        });
+        it('can broadcast to all players from an unowned Session', async () => {
+            resetSession(undefined, undefined, true);
+            await setupSession(session);
+
+            await session.broadcast('Test Broadcast', true);
+
+            mocks.mockDraftUser.received(1).sendDM(`${unownedPrefix}Test Broadcast`);
+            joinedUsers.forEach(user => {
+                user.received(1).sendDM(`${unownedPrefix}Test Broadcast`);
+            });
+            waitlistedUsers.forEach(user => {
+                user.received(1).sendDM(`${unownedPrefix}Test Broadcast`);
             });
         });
     });

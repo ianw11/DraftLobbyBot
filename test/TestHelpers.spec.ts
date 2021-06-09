@@ -4,6 +4,7 @@ import { InMemoryUserView } from "../src/database/inmemory/InMemoryUserView";
 import { ReadonlySessionView, SessionConstructorParameter, SessionParametersDB } from "../src/database/SessionDBSchema";
 import { IUserView } from "../src/database/UserDBSchema";
 import ENV, { DEFAULTS, ShallowEnvRequiredFields } from "../src/env/EnvBase";
+import DraftServer from "../src/models/DraftServer";
 import DraftUser from "../src/models/DraftUser";
 import Session from "../src/models/Session";
 import { DraftUserId, SessionId } from "../src/models/types/BaseTypes";
@@ -98,6 +99,7 @@ function* uniqueUserGenerator(_userId?: DraftUserId, name?: string, nickname?: s
         const username = name ? name : `BULK_USER_${id}`;
         draftUser.getDisplayName().returns(username);
         draftUser.getDisplayNameAsync().resolves(username);
+        draftUser.sendDM(Arg.any('string')).resolves();
 
         // Apparently Substitute doesn't mock properties, so we must explicitly do that here
 
@@ -341,7 +343,9 @@ export function buildMockAnnouncementChannel(params: mockAnnouncementChannelPara
     return channel;
 }
 
-export type TESTSession = SubstituteOf<Session> & {test_isSessionClosed?(): boolean};
+export type TESTSession = SubstituteOf<Session> & {
+    test_isSessionClosed?(): boolean;
+};
 export type AdditionalMockSessionOverrides = Partial<{
     overrideSessionId: string,
     resolver: Resolver,
@@ -415,4 +419,19 @@ export function buildMockSession(overrideSessionParameters: Partial<SessionConst
 
 export function getExistingMockSession(sessionId: SessionId): SubstituteOf<Session> | undefined {
     return generatedSessions[sessionId];
+}
+
+export type MockServerParams = {
+    session: SubstituteOf<Session>;
+    resolver: SubstituteOf<Resolver>;
+};
+export function buildMockServer(params: MockServerParams): SubstituteOf<DraftServer> {
+    const server = Substitute.for<DraftServer>();
+
+    server.resolver.returns(params.resolver);
+    server.getSessionFromDraftUser(Arg.all()).mimicks(user => {
+        return user.getUserId() === mockConstants.DISCORD_USER_ID ? params.session : undefined;
+    });
+
+    return server;
 }

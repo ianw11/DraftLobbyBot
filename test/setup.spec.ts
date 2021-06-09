@@ -7,10 +7,9 @@ import { IUserView } from "../src/database/UserDBSchema";
 import { InMemoryUserView } from "../src/database/inmemory/InMemoryUserView";
 import { Resolver, DiscordResolver } from "../src/models/types/ResolverTypes";
 import { ISessionView, SessionConstructorParameter, SessionDBSchema } from "../src/database/SessionDBSchema";
-import Session from "../src/models/Session";
 import { DraftUserId } from "../src/models/types/BaseTypes";
 import { DBDriver } from "../src/database/DBDriver";
-import { buildMockAnnouncementChannel, buildMockDiscordResolver, buildMockDiscordUser, buildMockGuild, buildMockMessage, buildMockSession, buildMockUserView, generateBasicUser, generateCustomUser, getExistingMockSession, getExistingMockUser, mockConstants, mockEnv, MocksConstants, resetLogLines } from "./TestHelpers.spec";
+import { buildMockAnnouncementChannel, buildMockDiscordResolver, buildMockDiscordUser, buildMockGuild, buildMockMessage, buildMockServer, buildMockSession, buildMockUserView, generateBasicUser, generateCustomUser, getExistingMockSession, getExistingMockUser, mockConstants, mockEnv, MocksConstants, resetLogLines, TESTSession } from "./TestHelpers.spec";
 
 /*
 WARNING: THAR BE DRAGONS IN THIS FILE
@@ -40,9 +39,9 @@ Other exports are:
 export interface MocksInterface {
     mockConstants: MocksConstants,
     mockSessionParameters: SessionConstructorParameter,
-    mockSession: SubstituteOf<Session>,
+    mockSession: TESTSession,
     mockUserView: IUserView,
-    mockDraftUser: DraftUser,
+    mockDraftUser: SubstituteOf<DraftUser>,
     mockResolver: SubstituteOf<Resolver>,
     mockDiscordResolver: SubstituteOf<DiscordResolver>,
     mockDBDriver: SubstituteOf<DBDriver>,
@@ -54,7 +53,8 @@ export interface MocksInterface {
     mockGuildMembers: SubstituteOf<GuildMember>[],
     userGenerator: () => SubstituteOf<DraftUser>,
     createMockUserView: () => IUserView,
-    mockSessionDBSchema: SessionDBSchema
+    mockSessionDBSchema: SessionDBSchema,
+    mockServer: SubstituteOf<DraftServer>
 }
 
 ////////////////////
@@ -70,17 +70,20 @@ beforeEach(() => {
     resetLogLines();
 });
 
-export function buildContext(parameters: string[] = ["NO_PARAMS"]): Context {
+export type MockContextArgs = {
+    draftUser?: SubstituteOf<DraftUser>;
+    server?: SubstituteOf<DraftServer>;
+};
+export function buildContext(parameters = "", additionalParams?: MockContextArgs): Context {
     const mocks = setup();
 
-    const draftServer = Substitute.for<DraftServer>();
-    draftServer.resolver.returns(mocks.mockResolver);
-
-    return new Context({
-        env: mockEnv,
-        draftServer: draftServer,
-        user: mocks.mockDiscordUser,
-        parameters: parameters});
+    const context = Substitute.for<Context>();
+    context.env.returns(mockEnv);
+    context.draftServer.returns(additionalParams?.server ?? mocks.mockServer),
+    context.parameters.returns(parameters === '' ? [] : parameters.split(" "));
+    context.draftUser.returns(additionalParams?.draftUser ?? mocks.mockDraftUser);
+    context.resolver.returns(mocks.mockResolver);
+    return context;
 }
 
 ///////////////////////////////////
@@ -97,16 +100,32 @@ export default function setup(forceRegeneration = false): MocksInterface {
 
     const {DISCORD_SERVER_ID, SESSION_ID, DISCORD_USER_ID, USERNAME, NICKNAME, TAG} = mockConstants;
 
-    const mockResolver = Substitute.for<Resolver>();
-    const [mockSession, mockSessionParameters] = buildMockSession({}, {overrideSessionId: SESSION_ID, resolver: mockResolver});
+    const mockDBDriver = Substitute.for<DBDriver>();
+    mockDBDriver.getSessionView(Arg.all()).mimicks((serverId, sessionId) =>  {
+        const view = Substitute.for<ISessionView>();
+        view.serverId.returns(serverId);
+        view.sessionId.returns(sessionId);
+        return view;
+    });
 
     const mockMessage = buildMockMessage(SESSION_ID);
     const mockAnnouncementChannel = buildMockAnnouncementChannel({announcementMessage: mockMessage});
     mockMessage.channel.returns(mockAnnouncementChannel);
 
+    const mockResolver = Substitute.for<Resolver>();
+    mockResolver.env.returns(mockEnv);
+    mockResolver.resolveUser(Arg.any()).mimicks((userId: DraftUserId) => getExistingMockUser(userId));
+    mockResolver.resolveSession(Arg.any('string')).mimicks((sessionId) => getExistingMockSession(sessionId));
+    mockResolver.discordResolver.returns(buildMockDiscordResolver(mockMessage, mockAnnouncementChannel));
+    mockResolver.dbDriver.returns(mockDBDriver);
+
+
+    const [mockSession, mockSessionParameters] = buildMockSession({}, {overrideSessionId: SESSION_ID, resolver: mockResolver});
+
+    const mockServer = buildMockServer({session: mockSession, resolver: mockResolver});
+
     const [mockGuild, mockGuildMembers] = buildMockGuild({channel: mockAnnouncementChannel, message: mockMessage});
  
-    // Try to pre-fill this object as much as possible
     const mocks: MocksInterface = {
         // First export the convenience attributes
         mockConstants: mockConstants,
@@ -135,9 +154,11 @@ export default function setup(forceRegeneration = false): MocksInterface {
 
         mockResolver,
         mockDiscordResolver: Substitute.for<DiscordResolver>(),
-        mockDBDriver: Substitute.for<DBDriver>(),
+        mockDBDriver,
 
         createMockUserView: buildMockUserView,
+
+        mockServer,
 
         mockSessionDBSchema: {
             serverId: "MOCK_DB_SERVER_ID",
@@ -150,24 +171,7 @@ export default function setup(forceRegeneration = false): MocksInterface {
         }
     };
 
-    // With the main mocks done, hook up the overrides...
-
-    const {mockDBDriver, mockDiscordUser, mockDmChannel} = mocks;
-
-    mockResolver.env.returns(mockEnv);
-    mockResolver.resolveUser(Arg.any()).mimicks((userId: DraftUserId) => getExistingMockUser(userId));
-    mockResolver.resolveSession(Arg.any('string')).mimicks((sessionId) => getExistingMockSession(sessionId));
-    mockResolver.discordResolver.returns(buildMockDiscordResolver(mockMessage, mockAnnouncementChannel));
-    // Setup the DB Driver
-    mockResolver.dbDriver.returns(mockDBDriver);
-    //mockDBDriver.createSession(Arg.all()).returns(undefined);
-    mockDBDriver.getSessionView(Arg.all()).mimicks((serverId, sessionId) =>  {
-        const view = Substitute.for<ISessionView>();
-        view.serverId.returns(serverId);
-        view.sessionId.returns(sessionId);
-        return view;
-    });
-    
+    const {mockDiscordUser, mockDmChannel} = mocks;
     // Attach the output DM channel to the Discord User
     mockDiscordUser.createDM().resolves(mockDmChannel);
 
