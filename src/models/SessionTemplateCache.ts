@@ -14,7 +14,7 @@ try {
     Templates = require('../../../config/SessionTemplates.json') as SessionParameterFile;
     CommonTemplate = Templates[COMMON_TEMPLATE_NAME] || {};
 } catch (e) {
-    console.log("Could not find config/SessionTemplates.json - running without template support");
+    console.error("Could not find config/SessionTemplates.json - running without template support");
 }
 
 /**

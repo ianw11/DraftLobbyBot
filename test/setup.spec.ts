@@ -6,10 +6,12 @@ import Context from "../src/commands/models/Context";
 import { IUserView } from "../src/database/UserDBSchema";
 import { InMemoryUserView } from "../src/database/inmemory/InMemoryUserView";
 import { Resolver, DiscordResolver } from "../src/models/types/ResolverTypes";
-import { ISessionView, SessionConstructorParameter, SessionDBSchema } from "../src/database/SessionDBSchema";
+import { ISessionView, SessionConstructorParameter, SessionDBSchema, SessionParametersWithSugar } from "../src/database/SessionDBSchema";
 import { DraftUserId } from "../src/models/types/BaseTypes";
 import { DBDriver } from "../src/database/DBDriver";
 import { buildMockAnnouncementChannel, buildMockDiscordResolver, buildMockDiscordUser, buildMockGuild, buildMockMessage, buildMockServer, buildMockSession, buildMockUserView, generateBasicUser, generateCustomUser, getExistingMockSession, getExistingMockUser, mockConstants, mockEnv, MocksConstants, resetLogLines, TESTSession } from "./TestHelpers.spec";
+import { Dependencies } from "../src/models/Dependencies";
+import SessionTemplateCache from "../src/models/SessionTemplateCache";
 
 /*
 WARNING: THAR BE DRAGONS IN THIS FILE
@@ -54,7 +56,8 @@ export interface MocksInterface {
     userGenerator: () => SubstituteOf<DraftUser>,
     createMockUserView: () => IUserView,
     mockSessionDBSchema: SessionDBSchema,
-    mockServer: SubstituteOf<DraftServer>
+    mockServer: SubstituteOf<DraftServer>,
+    mockSessionCreationTemplate: SubstituteOf<SessionParametersWithSugar>
 }
 
 ////////////////////
@@ -98,7 +101,7 @@ export default function setup(forceRegeneration = false): MocksInterface {
         return builtMocks;
     }
 
-    const {DISCORD_SERVER_ID, SESSION_ID, DISCORD_USER_ID, USERNAME, NICKNAME, TAG} = mockConstants;
+    const {DISCORD_SERVER_ID, SESSION_ID, DISCORD_USER_ID, USERNAME, NICKNAME, TAG, SESSION_CREATION_TEMPLATE_NAME} = mockConstants;
 
     const mockDBDriver = Substitute.for<DBDriver>();
     mockDBDriver.getSessionView(Arg.all()).mimicks((serverId, sessionId) =>  {
@@ -125,6 +128,15 @@ export default function setup(forceRegeneration = false): MocksInterface {
     const mockServer = buildMockServer({session: mockSession, resolver: mockResolver});
 
     const [mockGuild, mockGuildMembers] = buildMockGuild({channel: mockAnnouncementChannel, message: mockMessage});
+
+    const mockSessionCreationTemplate = Substitute.for<SessionParametersWithSugar>();
+
+    const mockCache = Substitute.for<SessionTemplateCache>();
+    mockCache.getTemplate(SESSION_CREATION_TEMPLATE_NAME, Arg.any()).returns(mockSessionCreationTemplate);
+
+
+    // "Dependency Injection" :^)
+    Dependencies.sessionTemplateCache = mockCache;
  
     const mocks: MocksInterface = {
         // First export the convenience attributes
@@ -159,6 +171,8 @@ export default function setup(forceRegeneration = false): MocksInterface {
         createMockUserView: buildMockUserView,
 
         mockServer,
+
+        mockSessionCreationTemplate,
 
         mockSessionDBSchema: {
             serverId: "MOCK_DB_SERVER_ID",

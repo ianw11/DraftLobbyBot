@@ -1,8 +1,8 @@
 import Command from './models/Command';
 import Context from './models/Context';
-import SessionTemplateCache from '../models/SessionTemplateCache';
 import { parseDate } from '../Utils';
 import { SessionParametersWithSugar } from '../database/SessionDBSchema';
+import { Dependencies } from '../models/Dependencies';
 
 
 export default class CreateCommand implements Command {
@@ -20,9 +20,9 @@ export default class CreateCommand implements Command {
 
         const templateName = context.parameters.shift() as string;
 
-        const sessionTemplate = SessionTemplateCache.singleton.getTemplate(context.draftServer.serverId, templateName);
+        const sessionTemplate = Dependencies.sessionTemplateCache.getTemplate(context.draftServer.serverId, templateName);
         if (!sessionTemplate) {
-            throw new Error(`Could not find a template name ${templateName}`);
+            throw new Error(`Could not find a template named ${templateName}`);
         }
 
         if (context.parameters.length > 0) {
@@ -36,6 +36,10 @@ export default class CreateCommand implements Command {
     }
 
     usage(invocation: string): string {
-        return `${invocation}  - OR -  ${invocation} <templateName>`;
+        return `${invocation}  - OR -  ${invocation} <templateName>  - OR -  ${invocation} <templateName> <date>`;
+    }
+
+    usageExample(invocation: string): string {
+        return `${invocation} MyTemplateName`;
     }
 }

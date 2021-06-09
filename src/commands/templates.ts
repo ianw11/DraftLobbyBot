@@ -1,15 +1,13 @@
 import Context from "./models/Context"
 import Command from './models/Command';
-import SessionTemplateCache from "../models/SessionTemplateCache";
 import { MessageEmbed, EmbedFieldData } from "discord.js";
-
-const cache = SessionTemplateCache.singleton;
+import { Dependencies } from "../models/Dependencies";
 
 export default class TemplateCommand implements Command {
     static readonly singleton = new TemplateCommand();
 
     async execute(context: Context): Promise<void> {
-        const templates = cache.getTemplatesForServer(context.draftServer.serverId);
+        const templates = Dependencies.sessionTemplateCache.getTemplatesForServer(context.draftServer.serverId);
 
         const fields: EmbedFieldData[] = [];
         Object.keys(templates).sort().forEach((templateName) => {

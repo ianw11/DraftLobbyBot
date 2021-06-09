@@ -19,7 +19,9 @@ export interface MocksConstants {
     SESSION_ID: string,
     NUM_CONFIRMED: number,
     NUM_IN_WAITLIST: number,
-    MOCK_HEROKU_SESSION_ID: string
+    MOCK_HEROKU_SESSION_ID: string,
+    SESSION_CREATION_TEMPLATE_NAME: string
+
 }
 // Export the constants
 export const mockConstants: MocksConstants = {
@@ -31,7 +33,8 @@ export const mockConstants: MocksConstants = {
     SESSION_ID: 'TEST SESSION ID',
     NUM_CONFIRMED: 5,
     NUM_IN_WAITLIST: 3,
-    MOCK_HEROKU_SESSION_ID: "MOCK_HEROKU_SESSION_ID"
+    MOCK_HEROKU_SESSION_ID: "MOCK_HEROKU_SESSION_ID",
+    SESSION_CREATION_TEMPLATE_NAME: "TEMPLATE_NAME"
 }
 
 // The ENV object made available to tests
