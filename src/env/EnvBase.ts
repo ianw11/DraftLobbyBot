@@ -28,23 +28,21 @@ interface ShallowEnvDefaultable {
     EXPRESS: ExpressFields;
     
     DEBUG: boolean;
-    log: (msg: string) => void;
+    log: (msg: string | Error) => void;
 }
 
 // These MUST be defined in env.json for the bot to work
 // Exported for testing purposes - shouldn't be referenced otherwise
 export interface ShallowEnvRequiredFields {
     DISCORD_BOT_TOKEN: string;
+    DISCORD_APP_ID: string;
 }
 
 interface EnvClientOptions {
     BOT_ACTIVITY: string;
     BOT_ACTIVITY_TYPE?: ActivityType;
-
-    /**
-     * Number of messages PER CHANNEL to retain. Default message cache size is 200.
-     */
-    MESSAGE_CACHE_SIZE: number;
+    MESSAGE_CACHE_LIFETIME_SECONDS: number;
+    MESSAGE_CACHE_SWEEP_INTERVAL: number;
 }
 
 interface EnvSessionOptions {
@@ -89,7 +87,8 @@ const DefaultShallowEnvDefaults: ShallowEnvDefaultable = {
 const DefaultEnvClientOptionsDefaults: EnvClientOptions = {
     BOT_ACTIVITY: `Magic; %PREFIX%help for help`,
     BOT_ACTIVITY_TYPE: "PLAYING",
-    MESSAGE_CACHE_SIZE: 50
+    MESSAGE_CACHE_LIFETIME_SECONDS: 300,
+    MESSAGE_CACHE_SWEEP_INTERVAL: 120
 };
 
 const DefaultEnvSessionOptionDefaults: EnvSessionOptions = {

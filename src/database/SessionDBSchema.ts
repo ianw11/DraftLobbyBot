@@ -111,25 +111,25 @@ export class ReadonlySessionView implements ISessionView {
     getNumWaitlisted(): number {
         return this.waitlistedPlayerIds.length;
     }
-    get serverId(): string {
+    get serverId(): ServerId {
         return this.schema.serverId;
     }
-    get sessionId(): string {
+    get sessionId(): SessionId {
         return this.schema.sessionId;
     }
     get sessionParameters(): SessionParametersWithSugar {
         return this.schema.sessionParameters;
     }
-    get joinedPlayerIds(): string[] {
+    get joinedPlayerIds(): DraftUserId[] {
         return this.schema.joinedPlayerIds;
     }
-    get waitlistedPlayerIds(): string[] {
+    get waitlistedPlayerIds(): DraftUserId[] {
         return this.schema.waitlistedPlayerIds;
     }
     get sessionClosed(): boolean {
         return this.schema.sessionClosed;
     }
-    get ownerId(): string|undefined {
+    get ownerId(): DraftUserId|undefined {
         return this.schema.ownerId;
     }
 }
@@ -166,7 +166,7 @@ export function buildSessionParams(env: ENV, params?: SessionConstructorParamete
     runs the start command (marking them as owner of the Session).
 */
 export type SessionInjectedParameters = {
-    ownerId: string
+    ownerId: DraftUserId
 }
 export type SessionConstructorParameter = Partial<SessionParametersWithSugar> & Partial<SessionInjectedParameters>;
 

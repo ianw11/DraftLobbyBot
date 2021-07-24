@@ -3,6 +3,7 @@ import setup, { buildContext, MocksInterface } from "../setup.spec";
 import { expect } from "../chaiAsync.spec";
 import { testCommand } from "./models/Command.spec";
 import { mockConstants } from "../TestHelpers.spec";
+import { Snowflake } from "discord.js";
 
 const EditSession = new _EditSession();
 
@@ -27,7 +28,7 @@ describe('Test EditSession command', () => {
         it('fails to resolve the session', async () => {
             const context = buildContext();
 
-            mocks.mockDraftUser.setCreatedSessionId('INVALID_SESSION_ID');
+            mocks.mockDraftUser.setCreatedSessionId('INVALID_SESSION_ID' as Snowflake);
 
             await expect(EditSession.execute(context)).rejectedWith('SessionId found but resolver failed to find the Session');
         });

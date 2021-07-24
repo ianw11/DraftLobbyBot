@@ -1,6 +1,6 @@
 import Substitute, { SubstituteOf, Arg } from "@fluffy-spoon/substitute";
 import DraftServer from "../src/models/DraftServer";
-import { DMChannel, User, Message, TextChannel, Guild, GuildMember } from "discord.js";
+import { DMChannel, User, Message, TextChannel, Guild, GuildMember, Snowflake } from "discord.js";
 import DraftUser from "../src/models/DraftUser";
 import Context from "../src/commands/models/Context";
 import { IUserView } from "../src/database/UserDBSchema";
@@ -118,7 +118,7 @@ export default function setup(forceRegeneration = false): MocksInterface {
     const mockResolver = Substitute.for<Resolver>();
     mockResolver.env.returns(mockEnv);
     mockResolver.resolveUser(Arg.any()).mimicks((userId: DraftUserId) => getExistingMockUser(userId));
-    mockResolver.resolveSession(Arg.any('string')).mimicks((sessionId) => getExistingMockSession(sessionId));
+    mockResolver.resolveSession(Arg.any()).mimicks((sessionId) => getExistingMockSession(sessionId));
     mockResolver.discordResolver.returns(buildMockDiscordResolver(mockMessage, mockAnnouncementChannel));
     mockResolver.dbDriver.returns(mockDBDriver);
 
@@ -175,9 +175,9 @@ export default function setup(forceRegeneration = false): MocksInterface {
         mockSessionCreationTemplate,
 
         mockSessionDBSchema: {
-            serverId: "MOCK_DB_SERVER_ID",
-            sessionId: "MOCK_DB_SESSION_ID",
-            ownerId: "MOCK_DB_OWNER_ID",
+            serverId: "MOCK_DB_SERVER_ID" as Snowflake,
+            sessionId: "MOCK_DB_SESSION_ID" as Snowflake,
+            ownerId: "MOCK_DB_OWNER_ID" as Snowflake,
             joinedPlayerIds: [],
             waitlistedPlayerIds: [],
             sessionClosed: false,

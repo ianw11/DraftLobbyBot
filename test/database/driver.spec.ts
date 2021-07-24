@@ -3,6 +3,7 @@ import { IUserView } from "../../src/database/UserDBSchema";
 import { LowdbDriver } from "../../src/database/lowdb/LowdbDriver";
 import { DBDriver } from "../../src/database/DBDriver";
 import { mockConstants, mockEnv } from "../TestHelpers.spec";
+import { Snowflake } from "discord.js";
 
 
 const { DISCORD_SERVER_ID, DISCORD_USER_ID } = mockConstants;
@@ -21,8 +22,8 @@ describe("can read and write from db", () => {
     });
 
     it("should write and then read", async () => {
-        const mockCreatedSessionId = "MOCK_CREATED_SESSION_ID";
-        const mockCreatedSessionId2 = "MOCK_CREATED_SESSION_ID_2";
+        const mockCreatedSessionId = "MOCK_CREATED_SESSION_ID" as Snowflake;
+        const mockCreatedSessionId2 = "MOCK_CREATED_SESSION_ID_2" as Snowflake;
 
         expect(data.userId).eq(DISCORD_USER_ID);
 

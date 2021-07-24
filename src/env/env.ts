@@ -1,14 +1,17 @@
 import * as _ from 'lodash';
-import ENV, {DEFAULTS} from './EnvBase';
+import ENV, {DEFAULTS, ShallowEnvRequiredFields} from './EnvBase';
 import { replaceFromDict } from "../Utils";
 
 const ENV_JSON_FILE_LOCATION = '../../../config/env.json'; // Edit this if needed
 
-let ENV_JSON = { DISCORD_BOT_TOKEN: "NO_BOT_TOKEN_PROVIDED" };
+let ENV_JSON: ShallowEnvRequiredFields = { DISCORD_BOT_TOKEN: "NO_BOT_TOKEN_PROVIDED", DISCORD_APP_ID: "NO_APP_ID_PROVIDED" };
 try {
     ENV_JSON = require(ENV_JSON_FILE_LOCATION);
     if (!ENV_JSON.DISCORD_BOT_TOKEN || ENV_JSON.DISCORD_BOT_TOKEN === "NO_BOT_TOKEN_PROVIDED") {
         throw new Error("config/env.json MUST define DISCORD_BOT_TOKEN - ensure the field is defined");
+    }
+    if (!ENV_JSON.DISCORD_APP_ID || ENV_JSON.DISCORD_APP_ID === "NO_APP_ID_PROVIDED") {
+        throw new Error("config/env.json MUST define DISCORD_APP_ID - ensure the field is defined");
     }
 } catch (e) {
     // throw new Error("Could not find config/env.json - make sure this file exists");
@@ -18,7 +21,7 @@ try {
 
 
 const OVERRIDES = {
-    log: (msg: string) => { if (env.DEBUG) console.log(`[ENV] ${msg}`); }
+    log: (msg: string | Error) => { if (env.DEBUG) { console.log(`[ENV] ${msg}`); } }
 }
 
 /**

@@ -1,5 +1,5 @@
 import { ENV, replaceStringWithEnv } from './env/env';
-import {Client, Message, MessageReaction, User, Guild, PartialUser, ClientOptions, PresenceData} from 'discord.js';
+import {Message, MessageReaction, User, Guild, PartialUser, ClientOptions, PresenceData, Client, PartialMessageReaction} from 'discord.js';
 import Commands from './commands';
 import DraftServer from './models/DraftServer';
 import Session from './models/Session';
@@ -9,10 +9,10 @@ import { Resolver, DiscordResolver } from './models/types/ResolverTypes';
 import { LowdbDriver } from './database/lowdb/LowdbDriver';
 import { DBDriver } from './database/DBDriver';
 import { InMemoryDriver } from './database/inmemory/InMemoryDriver';
-import { ServerId } from './models/types/BaseTypes';
 import { ExpressDriver } from './express/ExpressDriver';
 import { ISessionView } from './database/SessionDBSchema';
 import { asyncForEach } from './Utils';
+import { getGuild } from './models/discord/DiscordClientUtils';
 
 //
 // To set your Discord Bot Token, take a look at ./env/env.ts for an explanation (hint: make an env.json)
@@ -20,7 +20,7 @@ import { asyncForEach } from './Utils';
 
 // Join Link: https://discord.com/api/oauth2/authorize?client_id={YOUR_CLIENT_ID}&scope=bot&permissions=133200
 
-const SERVER_CACHE: Record<ServerId, DraftServer> = {};
+const SERVER_CACHE: Record<string, DraftServer> = {};
 
 ////////////////
 // DATA LAYER //
@@ -37,7 +37,7 @@ function getDraftServer(guild: Guild, env: ENV, dbDriver: DBDriver): DraftServer
     return server;
 }
 
-function getServerAndSession(reaction: MessageReaction, env: ENV, dbDriver: DBDriver): [DraftServer, Session?] {
+function getServerAndSession(reaction: MessageReaction | PartialMessageReaction, env: ENV, dbDriver: DBDriver): [DraftServer, Session?] {
     const {message} = reaction;
 
     const {guild} = message;
@@ -55,9 +55,11 @@ function getServerAndSession(reaction: MessageReaction, env: ENV, dbDriver: DBDr
 // Helper Methods for the Discord client //
 ///////////////////////////////////////////
 
-async function outputError(e: Error, user: User | PartialUser, env: ENV) {
-    console.log(e);
-    await (await user.createDM()).send(env.ERROR_OUTPUT.replace("%s", e.message))
+async function outputError(e: unknown, user: User | PartialUser, env: ENV) {
+    if (e instanceof Error) {
+        console.log(e);
+        await (await user.createDM()).send(env.ERROR_OUTPUT.replace("%s", e.message));
+    }
 }
 
 function onMessage(env: ENV, dbDriver: DBDriver, killSwitch: ()=>void) {
@@ -72,7 +74,7 @@ function onMessage(env: ENV, dbDriver: DBDriver, killSwitch: ()=>void) {
             killSwitch();
             return;
         }
-        if (message.channel.type == 'dm') {
+        if (message.channel.type == 'DM') {
             await message.channel.send("Sorry, I don't respond in DMs. Give me a command from a server");
             return;
         }
@@ -125,9 +127,9 @@ function onMessage(env: ENV, dbDriver: DBDriver, killSwitch: ()=>void) {
 }
 
 type ReactionCallback = (p1: DraftUser, p2: Session) => Promise<void>;
-type CurriedReactionCallback = (r: MessageReaction, u: User | PartialUser) => Promise<void>;
+type CurriedReactionCallback = (r: MessageReaction | PartialMessageReaction, u: User | PartialUser) => Promise<void>;
 function onReaction(env: ENV, dbDriver: DBDriver, callback: ReactionCallback): CurriedReactionCallback {
-    return async (reaction: MessageReaction, rawUser: User | PartialUser) => {
+    return async (reaction: MessageReaction | PartialMessageReaction, rawUser: User | PartialUser) => {
         if (rawUser.bot) return;
 
         try {
@@ -148,7 +150,7 @@ function onReady(client: Client, env: ENV, dbDriver: DBDriver, expressDriver: Ex
     let killFlag = false;
     return async () => {
         env.log("Logged in successfully - BEGINNING SETUP");
-        env.log(`${client.guilds.cache.array().length} guilds loaded`);
+        env.log(`${client.guilds.cache.size} guilds loaded`);
 
         // The first thing we do is go through and preload the guilds, messages, and users that
         // exist in the database.
@@ -229,7 +231,7 @@ function onReady(client: Client, env: ENV, dbDriver: DBDriver, expressDriver: Ex
             ++successful;
         });
         env.log(`Preloaded ${successful} sessions.${numErrors > 0 ? ` There were ${numErrors} discrepancies/issues but they have been resolved.` : ''}`);
-        env.log(`${additionalGuilds} guilds added to cache.  New total: ${client.guilds.cache.array().length}`);
+        env.log(`${additionalGuilds} guilds added to cache.  New total: ${client.guilds.cache.size}`);
 
         if (!killFlag) {
             // Additional tasks that need to be started alongside the application lifecycle go here
@@ -258,7 +260,7 @@ function onReady(client: Client, env: ENV, dbDriver: DBDriver, expressDriver: Ex
 ////////////////////
 
 export default function main(env: ENV): void {
-    const {DISCORD_BOT_TOKEN, BOT_ACTIVITY, BOT_ACTIVITY_TYPE, MESSAGE_CACHE_SIZE, DATABASE} = env;
+    const {DISCORD_BOT_TOKEN, DATABASE, BOT_ACTIVITY, BOT_ACTIVITY_TYPE, MESSAGE_CACHE_LIFETIME_SECONDS, MESSAGE_CACHE_SWEEP_INTERVAL} = env;
 
     if (!DATABASE || !DATABASE.DB_DRIVER) {
         throw new Error("Missing DATABASE block - please update your env.json file to include one");
@@ -281,25 +283,30 @@ export default function main(env: ENV): void {
     const presence: PresenceData = {
         status: 'online',
         afk: false,
-        activity: BOT_ACTIVITY ? {
+        activities: BOT_ACTIVITY ? [{
             type: BOT_ACTIVITY_TYPE || 'LISTENING',
             name: replaceStringWithEnv(BOT_ACTIVITY, env)
-        } : { }
+        }] : undefined
     };
     const DISCORD_CLIENT_OPTIONS: ClientOptions = {
-        messageCacheMaxSize: MESSAGE_CACHE_SIZE,
-        presence: presence
+        messageCacheLifetime: MESSAGE_CACHE_LIFETIME_SECONDS,
+        messageSweepInterval: MESSAGE_CACHE_SWEEP_INTERVAL,
+        presence: presence,
+        intents: [
+            'GUILDS',
+            'GUILD_MESSAGES',
+            'GUILD_MESSAGE_REACTIONS',
+            'DIRECT_MESSAGES',
+            'DIRECT_MESSAGE_REACTIONS'
+        ]
     };
-
+    
     // Create Discord Client
     const client = new Client(DISCORD_CLIENT_OPTIONS);
 
     // Set up Express server by providing it with the Discord Client and a way to resolve DraftServers
     const expressServer = new ExpressDriver(client, env, async (serverId) => {
-        let guild = client.guilds.resolve(serverId);
-        if (!guild) {
-            guild = await client.guilds.fetch(serverId);
-        }
+        const guild = await getGuild(client, serverId);
         return getDraftServer(guild, env, dbDriver);
     });
 
@@ -309,13 +316,20 @@ export default function main(env: ENV): void {
 
     // Attach listeners to Discord Client
     client.once('ready', onReady(client, env, dbDriver, expressServer, (ks) => {killSwitch = ks} ));
-    client.on('message', onMessage(env, dbDriver, ()=>killSwitch()));
+    client.on('messageCreate', onMessage(env, dbDriver, ()=>killSwitch()));
     client.on('messageReactionAdd', onReaction(env, dbDriver, async (draftUser, session) => await session.addPlayer(draftUser)));
     client.on('messageReactionRemove', onReaction(env, dbDriver, async (draftUser, session) => await session.removePlayer(draftUser)));
+    //client.on('debug', (msg) => console.log(`[DISCORD DEBUG] ${msg}`));
+    client.on('warn', (msg) => console.log(`[DISCORD WARN] ${msg}`));
+    client.on('error', (err) => console.error(err));
 
     if (DISCORD_BOT_TOKEN) {
         // Yes, this is THE login call. If this is successful, it triggers onReady
-        client.login(DISCORD_BOT_TOKEN);
+        client.login(DISCORD_BOT_TOKEN)
+            .catch((reason) => {
+                console.error('FAILED TO LOGIN');
+                console.error(reason);
+            });
     } else {
         console.error("Unable to login - DISCORD_BOT_TOKEN was not properly set up");
         client.destroy();

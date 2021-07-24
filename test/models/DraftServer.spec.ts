@@ -1,7 +1,8 @@
 import Substitute, { Arg, SubstituteOf } from "@fluffy-spoon/substitute";
-import { TextChannel } from "discord.js";
+import { Snowflake, TextChannel } from "discord.js";
 import DraftServer from "../../src/models/DraftServer";
 import DraftUser from "../../src/models/DraftUser";
+import { SessionId } from "../../src/models/types/BaseTypes";
 import { expect } from "../chaiAsync.spec";
 import setup, { MocksInterface } from "../setup.spec";
 import { buildMockMessage, buildMockSession, mockConstants, mockEnv, TESTSession } from "../TestHelpers.spec";
@@ -25,7 +26,7 @@ describe('test DraftServer', () => {
 
             await server.createSession(owner);
 
-            mocks.mockAnnouncementChannel.received(1).send('Setting up session...', undefined);
+            mocks.mockAnnouncementChannel.received(1).send('Setting up session...');
 
             // Checks the mocked call used to create a Session
             mocks.mockDBDriver.received(1).createSession(mockConstants.DISCORD_SERVER_ID, mockConstants.SESSION_ID, mockEnv, {ownerId: owner.getUserId()});
@@ -96,7 +97,7 @@ describe('test DraftServer', () => {
 
         it('will not allow a Session to be closed if somehow the data gets messed up', async () => {
             // Foribly break the link
-            session = buildMockSession({ownerId: "FAKE_OWNER_ID"})[0];
+            session = buildMockSession({ownerId: "FAKE_OWNER_ID" as Snowflake})[0];
             owner.setCreatedSessionId(session.sessionId);
 
             await expect(server.startSessionOwnedByUser(owner)).rejectedWith('createdSessionId for User does not match ownerId for Session');
@@ -108,7 +109,7 @@ describe('test DraftServer', () => {
 
         it('will not close a Session if the session cannot be resolved', async () => {
             const oldSessionId = owner.getCreatedSessionId();
-            owner.setCreatedSessionId(oldSessionId + "FAKE");
+            owner.setCreatedSessionId(oldSessionId + "FAKE" as Snowflake);
 
             expect(server.getSessionFromDraftUser(owner)).is.undefined;
 
@@ -154,7 +155,7 @@ describe('test DraftServer', () => {
         });
 
         it('will return an undefined Session with an empty/undefined input', () => {
-            owner.setCreatedSessionId('');
+            owner.setCreatedSessionId('' as SessionId);
 
             expect(server.getSessionFromDraftUser(owner)).is.undefined;
         });
@@ -170,8 +171,8 @@ describe('test DraftServer', () => {
 
         it('will return undefined if the message is not from the announcement channel', () => {
             const mockChannel = Substitute.for<TextChannel>();
-            mockChannel.id.returns("FAKE")
-            const message = buildMockMessage("MESSAGE_ID");
+            mockChannel.id.returns("FAKE" as Snowflake)
+            const message = buildMockMessage("MESSAGE_ID" as Snowflake);
             message.channel.returns(mockChannel);
             expect(server.getSessionFromMessage(message)).is.undefined;
         });

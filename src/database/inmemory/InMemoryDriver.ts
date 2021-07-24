@@ -7,8 +7,12 @@ import { InMemorySessionView } from "./InMemorySessionView";
 import { InMemoryUserView } from "./InMemoryUserView";
 
 export class InMemoryDriver extends DBDriverBase implements DBDriver {
-    private readonly serverUsers: Record<ServerId, Record<DraftUserId, IUserView>> = {};
-    private readonly serverSessions: Record<ServerId, Record<SessionId, ISessionView>> = {};
+    
+    // <ServerId, Record<DraftUserId, IUserView>>
+    private readonly serverUsers: Record<string, Record<string, IUserView>> = {};
+
+    // <ServerId, Record<SessionId, ISessionView>>
+    private readonly serverSessions: Record<string, Record<string, ISessionView>> = {};
 
     getOrCreateUserView(serverId: ServerId, userId: DraftUserId): IUserView {
         let server = this.serverUsers[serverId];

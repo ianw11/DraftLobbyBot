@@ -1,3 +1,4 @@
+import { Snowflake } from "discord.js";
 import { ObjectChain, CollectionChain } from "lodash";
 
 export { ObjectChain, CollectionChain };
@@ -18,6 +19,10 @@ export class LowDbViewBase<T> {
             return "";
         }
         return value as string;
+    }
+
+    getSnowflake<TKey extends keyof T>(name: TKey): Snowflake {
+        return this.getString(name) as Snowflake;
     }
 
     getBoolean<TKey extends keyof T>(name: TKey): boolean {

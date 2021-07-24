@@ -6,6 +6,8 @@ import DraftUser from "../../src/models/DraftUser";
 import { SessionParametersWithSugar, buildSessionParams, SessionConstructorParameter } from "../../src/database/SessionDBSchema";
 import { InMemorySessionView } from "../../src/database/inmemory/InMemorySessionView";
 import { getLogLines, mockConstants, mockEnv, turnMockDiscordUserIntoBot } from "../TestHelpers.spec";
+import { SessionId } from "../../src/models/types/BaseTypes";
+import { Snowflake } from "discord.js";
 
 /*
 Could use testing:
@@ -23,7 +25,7 @@ describe("Test Session", () => {
         resetSession();
     });
 
-    function resetSession(overrideSessionParameters?: Partial<SessionConstructorParameter>, overrideSessionId?: string, unowned?: boolean) {
+    function resetSession(overrideSessionParameters?: Partial<SessionConstructorParameter>, overrideSessionId?: SessionId, unowned?: boolean) {
         const sessionParams: SessionParametersWithSugar = buildSessionParams(mockEnv, {...mocks.mockSessionParameters, ...(overrideSessionParameters || {})});
         session = new Session(new InMemorySessionView(
             mockConstants.DISCORD_SERVER_ID,
@@ -94,7 +96,7 @@ describe("Test Session", () => {
             expect(session.getDate()).to.deep.equal(date);
 
             // Setting url does not update the message
-            mockMessage.received(5).edit(Arg.any(), Arg.any());
+            mockMessage.received(5).edit(Arg.any());
         });
 
         it('cannot set invalid parameters', () => {
@@ -102,7 +104,7 @@ describe("Test Session", () => {
             const {sessionCapacity} = mockSessionParameters;
             const { SESSION_ID } = mockConstants;
 
-            expect(() => { session.sessionId = "BAD_ID" }).to.throw("Session Id can only be set via resetMessage()");
+            expect(() => { session.sessionId = "BAD_ID" as Snowflake }).to.throw("Session Id can only be set via resetMessage()");
             expect(session.sessionId).to.equal(SESSION_ID);
 
             expect(session.setSessionCapacity(0)).be.rejected;
@@ -385,7 +387,7 @@ describe("Test Session", () => {
         });
 
         it('outputs if the desired channel is not present', async () => {
-            resetSession({}, 'NON_DEFAULT_ID');
+            resetSession({}, 'NON_DEFAULT_ID' as Snowflake);
             await session.terminate();
             assert(getLogLines().includes('Unable to delete message - not found in channel'));
         });

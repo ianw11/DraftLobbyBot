@@ -1,3 +1,4 @@
+import { DraftUserId } from '../models/types/BaseTypes';
 import Command from './models/Command';
 import Context from './models/Context';
 
@@ -21,7 +22,7 @@ export class TransferOwnershipCommand implements Command {
         await session.changeOwner(context.resolver.resolveUser(newOwnerId));
     }
 
-    private findUserIdFromMentions(context: Context): string | undefined {
+    private findUserIdFromMentions(context: Context): DraftUserId | undefined {
         const mentionedMembers = context.message?.mentions.members?.array();
         if (!mentionedMembers || mentionedMembers.length === 0) {
             return;
@@ -30,7 +31,7 @@ export class TransferOwnershipCommand implements Command {
         return mentionedGuildMember.id;
     }
 
-    private findUserIdFromCommandParameters(context: Context): string | undefined {
+    private findUserIdFromCommandParameters(context: Context): DraftUserId | undefined {
         if (context.parameters.length < 1) {
             return;
         }
@@ -41,7 +42,7 @@ export class TransferOwnershipCommand implements Command {
             return context.resolver.discordResolver.resolveGuildMemberFromTag(input)?.id;
         } else {
             // Otherwise we assume we got the user id
-            return input;
+            return input as DraftUserId | undefined;
         }
     }
 

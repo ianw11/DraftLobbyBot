@@ -1,5 +1,5 @@
 import Substitute, { Arg, SubstituteOf } from "@fluffy-spoon/substitute";
-import { ChannelLogsQueryOptions, Collection, Guild, GuildChannel, GuildChannelManager, GuildMember, GuildMemberManager, Message, MessageManager, TextChannel, User, VoiceChannel } from "discord.js";
+import { ChannelLogsQueryOptions, Collection, Guild, GuildChannel, GuildChannelManager, GuildMember, GuildMemberManager, GuildMemberResolvable, Message, MessageManager, Snowflake, TextChannel, User, VoiceChannel } from "discord.js";
 import { InMemoryUserView } from "../src/database/inmemory/InMemoryUserView";
 import { ReadonlySessionView, SessionConstructorParameter, SessionParametersDB } from "../src/database/SessionDBSchema";
 import { IUserView } from "../src/database/UserDBSchema";
@@ -7,16 +7,16 @@ import ENV, { DEFAULTS, ShallowEnvRequiredFields } from "../src/env/EnvBase";
 import DraftServer from "../src/models/DraftServer";
 import DraftUser from "../src/models/DraftUser";
 import Session from "../src/models/Session";
-import { DraftUserId, SessionId } from "../src/models/types/BaseTypes";
+import { DraftUserId, ServerId, SessionId } from "../src/models/types/BaseTypes";
 import { DiscordResolver, Resolver } from "../src/models/types/ResolverTypes";
 
 export interface MocksConstants {
-    DISCORD_SERVER_ID: string,
-    DISCORD_USER_ID: string,
+    DISCORD_SERVER_ID: ServerId,
+    DISCORD_USER_ID: DraftUserId,
     USERNAME: string,
     NICKNAME: string,
     TAG: string,
-    SESSION_ID: string,
+    SESSION_ID: SessionId,
     NUM_CONFIRMED: number,
     NUM_IN_WAITLIST: number,
     MOCK_HEROKU_SESSION_ID: string,
@@ -25,12 +25,12 @@ export interface MocksConstants {
 }
 // Export the constants
 export const mockConstants: MocksConstants = {
-    DISCORD_SERVER_ID: 'TEST SERVER ID',
-    DISCORD_USER_ID: 'TEST DISCORD USER ID',
+    DISCORD_SERVER_ID: '69420',
+    DISCORD_USER_ID: '42069',
     USERNAME: 'TEST USERNAME',
     NICKNAME: 'TEST NICKNAME',
     TAG: 'TEST#0000',
-    SESSION_ID: 'TEST SESSION ID',
+    SESSION_ID: 'TEST SESSION ID' as Snowflake,
     NUM_CONFIRMED: 5,
     NUM_IN_WAITLIST: 3,
     MOCK_HEROKU_SESSION_ID: "MOCK_HEROKU_SESSION_ID",
@@ -41,7 +41,8 @@ export const mockConstants: MocksConstants = {
 
 let logLines: string[] = [];
 const INJECTED_PARAMS: ShallowEnvRequiredFields = {
-    DISCORD_BOT_TOKEN: "MOCK DISCORD BOT TOKEN"
+    DISCORD_BOT_TOKEN: "MOCK DISCORD BOT TOKEN",
+    DISCORD_APP_ID: "MOCK_DISCORD_APP_ID"
 };
 function mockLog() {
     return (msg: string): void => {
@@ -97,7 +98,7 @@ function* uniqueUserGenerator(_userId?: DraftUserId, name?: string, nickname?: s
     while (true) {
         const draftUser: SubstituteOf<DraftUser> = Substitute.for<DraftUser>();
         const id = idGenerator.next().value;
-        const userId = _userId ? _userId : `ID_BULK_USER_${id}`;
+        const userId = _userId ? _userId : `ID_BULK_USER_${id}` as unknown as DraftUserId;
         draftUser.getUserId().returns(userId);
         const username = name ? name : `BULK_USER_${id}`;
         draftUser.getDisplayName().returns(username);
@@ -135,7 +136,7 @@ export function getExistingMockUser(id: DraftUserId): SubstituteOf<DraftUser> | 
     return generatedUsers[id];
 }
 
-export function buildMockDiscordUser(id: string, username: string, nickname?: string, tag?: string, bot?: boolean): SubstituteOf<User> {
+export function buildMockDiscordUser(id: DraftUserId, username: string, nickname?: string, tag?: string, bot?: boolean): SubstituteOf<User> {
     const user = Substitute.for<User>();
     user.id.returns(id);
     user.username.returns(username);
@@ -155,7 +156,7 @@ export type MockDiscordGuildMemberParams = {
     nickname?: string;
     tag?: string;
 };
-export function buildMockDiscordGuildMember(id: string, params: MockDiscordGuildMemberParams = {}): SubstituteOf<GuildMember> {
+export function buildMockDiscordGuildMember(id: DraftUserId, params: MockDiscordGuildMemberParams = {}): SubstituteOf<GuildMember> {
     const member = Substitute.for<GuildMember>();
     member.id.returns(id);
     member.nickname.returns(params.nickname);
@@ -186,8 +187,8 @@ export function turnMockDiscordUserIntoBot(id: string): SubstituteOf<User> {
 
 
 
-export function buildMockUserView(_id?: string, nickname?: string): IUserView {
-    const id = _id || `USER_VIEW_MOCK_${idGenerator.next().value}`;
+export function buildMockUserView(_id?: DraftUserId, nickname?: string): IUserView {
+    const id = _id || `USER_VIEW_MOCK_${idGenerator.next().value}` as unknown as DraftUserId;
     const {DISCORD_SERVER_ID, USERNAME} = mockConstants;
     buildMockDiscordUser(id, USERNAME, nickname);
     return new InMemoryUserView(DISCORD_SERVER_ID, id);
@@ -196,7 +197,7 @@ export function buildMockUserView(_id?: string, nickname?: string): IUserView {
 export function buildMockDiscordResolver(mockMessage: SubstituteOf<Message>, announcementChannel?: TextChannel): DiscordResolver {
     const resolver = Substitute.for<DiscordResolver>();
 
-    resolver.resolveUser(Arg.any('string')).mimicks(id => generatedDiscordUsers[id]);
+    resolver.resolveUser(Arg.any()).mimicks(id => generatedDiscordUsers[id]);
     resolver.resolveUserAsync(Arg.any()).mimicks(async id => generatedDiscordUsers[id]);
     resolver.resolveGuildMember(Arg.any()).mimicks(id => generatedGuildMembers[id]);
     resolver.resolveGuildMemberFromTag(Arg.any()).mimicks(id => generatedGuildMembers[id]);
@@ -227,7 +228,7 @@ export function buildMockGuild(params: MockGuildParams): [SubstituteOf<Guild>, S
     const mockGuildMembers: SubstituteOf<GuildMember>[] = [];
     for (let i = 0; i < 5; ++i) {
         const suffix = idGenerator.next().value;
-        const mockGuildMember = buildMockDiscordGuildMember(`ID_BULK_GUILD_MEMBER_${suffix}`, {
+        const mockGuildMember = buildMockDiscordGuildMember(`ID_BULK_GUILD_MEMBER_${suffix}` as unknown as DraftUserId, {
             nickname: `NICKNAME_${suffix}`,
             tag: (i === 0) ? mockConstants.TAG : ''
         });
@@ -237,10 +238,10 @@ export function buildMockGuild(params: MockGuildParams): [SubstituteOf<Guild>, S
         mockGuildMembers.push(generatedGuildMembers[params.includedMember.id]);
     }
 
-    const mockGuildMemberCollection = Substitute.for<Collection<string, GuildMember>>();
+    const mockGuildMemberCollection = Substitute.for<Collection<DraftUserId, GuildMember>>();
     mockGuildMemberCollection.each(Arg.any()).mimicks(callback => {
         mockGuildMembers.forEach(cacheMember => {
-            callback(cacheMember, "GUILDMEMBERKEY", mockGuildMemberCollection);
+            callback(cacheMember, "GUILDMEMBERKEY" as unknown as DraftUserId, mockGuildMemberCollection);
         });
 
         return mockGuildMemberCollection;
@@ -248,29 +249,40 @@ export function buildMockGuild(params: MockGuildParams): [SubstituteOf<Guild>, S
 
     const mockGuildMemberManager = Substitute.for<GuildMemberManager>();
     mockGuildMemberManager.cache.returns(mockGuildMemberCollection);
-    mockGuildMemberManager.fetch(Arg.any('string')).mimicks(async userId => {
+    mockGuildMemberManager.fetch(Arg.any()).mimicks(async userId => {
         return mockGuildMembers.find(member => member.id === userId);
     });
-    mockGuildMemberManager.resolve(Arg.any('string')).mimicks(userId => {
-        return mockGuildMembers.find(member => member.id === userId);
+    /*
+        This next portion is because the GuildMemberManager.resolve is overloaded and the testing library
+        needs to check for both types (or at least the "first" option) both of which means
+        a GuildMember object is possible
+
+        Strictly speaking, the Arg.is could simply be replaced with Arg.any since we have to re-check
+        the type of userId anyway
+    */
+    mockGuildMemberManager.resolve(Arg.is(arg => typeof arg === `${BigInt}` || typeof arg === 'string')).mimicks((userId): GuildMember & GuildMemberResolvable => {
+        if (typeof userId !== 'string') {
+            return;
+        }
+        return mockGuildMembers.find(member => (member.id) === userId);
     });
 
 
-    const mockGuildChannelCollection = Substitute.for<Collection<string, GuildChannel>>();
+    const mockGuildChannelCollection = Substitute.for<Collection<ServerId, GuildChannel>>();
     mockGuildChannelCollection.each(Arg.any()).mimicks(callback => {
-        callback(buildMockAnnouncementChannel({ announcementMessage: buildMockMessage('NEVER_USE_THIS'), channelName: "ILLEGAL CHANNEL NAME" }), "NEVER_USE_THIS", mockGuildChannelCollection);
-        callback(Substitute.for<VoiceChannel>(), "NEVER_USE_THIS", mockGuildChannelCollection);
+        callback(buildMockAnnouncementChannel({ announcementMessage: buildMockMessage('NEVER_USE_THIS' as ServerId), channelName: "ILLEGAL CHANNEL NAME" }), "NEVER_USE_THIS" as Snowflake, mockGuildChannelCollection);
+        callback(Substitute.for<VoiceChannel>(), "NEVER_USE_THIS" as ServerId, mockGuildChannelCollection);
         if (!params.announcementChannelMissingFromCache) {
-            callback(params.channel, "CHANNELKEY", mockGuildChannelCollection);
+            callback(params.channel, "CHANNELKEY" as SessionId, mockGuildChannelCollection);
         }
         return mockGuildChannelCollection;
     });
     
     const mockGuildChannels = Substitute.for<GuildChannelManager>();
-    mockGuildChannels.resolve(Arg.any('string')).mimicks(() => {
+    mockGuildChannels.resolve(Arg.any()).mimicks(() => {
         if (params.resolveNonTextChannel === 'voice') {
             const voiceChannel = Substitute.for<VoiceChannel>();
-            voiceChannel.type.returns('voice');
+            voiceChannel.type.returns('GUILD_VOICE');
             return voiceChannel;
         } else if (params.resolveNonTextChannel === 'none') {
             return;
@@ -289,13 +301,13 @@ export function buildMockGuild(params: MockGuildParams): [SubstituteOf<Guild>, S
 
 
     const mockGuildMessages = Substitute.for<MessageManager>();
-    mockGuildMessages.resolve(Arg.any('string')).mimicks(() => {
+    mockGuildMessages.resolve(Arg.any()).mimicks(() => {
         if (!params.forceFetch) {
             return params.message;
         }
     });
-    mockGuildMessages.fetch(Arg.is<ChannelLogsQueryOptions>(() => true)).mimicks(async (options?: ChannelLogsQueryOptions): Promise<Collection<string, Message>> => {
-        const collection = Substitute.for<Collection<string, Message>>();
+    mockGuildMessages.fetch(Arg.is<ChannelLogsQueryOptions>(() => true)).mimicks(async (options?: ChannelLogsQueryOptions): Promise<Collection<Snowflake, Message>> => {
+        const collection = Substitute.for<Collection<Snowflake, Message>>();
         collection.get(Arg.is(id => id === options.around)).returns(params.message);
         return collection;
     });
@@ -327,21 +339,22 @@ export function buildMockAnnouncementChannel(params: mockAnnouncementChannelPara
     const channel = Substitute.for<TextChannel>();
 
     // For some odd reason, we now HAVE to define 'undefined' as a parameter
-    channel.send(Arg.any('string'), Arg.any('undefined')).resolves(params.announcementMessage);
+    channel.send(Arg.any('string')).resolves(params.announcementMessage);
     channel.name.returns(params.channelName ?? mockEnv.DRAFT_CHANNEL_NAME);
-    channel.type.returns('text');
-    channel.id.returns('ANNOUNCEMENT_CHANNEL_ID');
+    channel.type.returns('GUILD_TEXT');
+    channel.id.returns('ANNOUNCEMENT_CHANNEL_ID' as Snowflake);
+    channel.isThread().returns(false);
 
     const messageManager = Substitute.for<MessageManager>();
     channel.messages.returns(messageManager);
-    messageManager.resolve(Arg.any('string')).mimicks(() => {
+    messageManager.resolve(Arg.any()).mimicks(() => {
         if (!params.forceFetch) {
             return params.announcementMessage;
         }
     });
-    const messageCollection = Substitute.for<Collection<string, Message>>();
+    const messageCollection = Substitute.for<Collection<Snowflake, Message>>();
     messageManager.fetch(Arg.is<ChannelLogsQueryOptions>((x)=>x.around === params.announcementMessage.id)).resolves(messageCollection);
-    messageCollection.get(Arg.any('string')).returns(params.announcementMessage);
+    messageCollection.get(Arg.any()).returns(params.announcementMessage);
 
     return channel;
 }
@@ -350,7 +363,7 @@ export type TESTSession = SubstituteOf<Session> & {
     test_isSessionClosed?(): boolean;
 };
 export type AdditionalMockSessionOverrides = Partial<{
-    overrideSessionId: string,
+    overrideSessionId: Snowflake,
     resolver: Resolver,
     unownedSession: boolean
 }>;
@@ -362,7 +375,7 @@ export function buildMockSession(overrideSessionParameters: Partial<SessionConst
         fireWhenFull: false,
         sessionCapacity: 8,
         templateUrl: 'MOCK SESSION URL',
-        ownerId: additionalOverrides?.unownedSession ? '' : mockConstants.DISCORD_USER_ID,
+        ownerId: additionalOverrides?.unownedSession ? '' as Snowflake : mockConstants.DISCORD_USER_ID,
 
         sessionConfirmMessage: 'MOCK CONFIRM MESSAGE',
         sessionWaitlistMessage: 'MOCK WAITLIST MESSAGE',
@@ -370,7 +383,7 @@ export function buildMockSession(overrideSessionParameters: Partial<SessionConst
     }, ...overrideSessionParameters};
 
     const session = Substitute.for<TESTSession>();
-    const sessionId = additionalOverrides?.overrideSessionId ?? `ID_BULK_SESSION_${idGenerator.next().value}`;
+    const sessionId = additionalOverrides?.overrideSessionId ?? `ID_BULK_SESSION_${idGenerator.next().value}` as unknown as Snowflake;
 
     let sessionClosed = false;
 

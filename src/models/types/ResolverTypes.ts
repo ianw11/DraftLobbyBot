@@ -1,6 +1,6 @@
 import DraftUser from "../DraftUser";
 import Session from "../Session";
-import { Guild, GuildChannel, GuildMember, Message, TextChannel, User } from 'discord.js';
+import { Guild, GuildChannel, GuildMember, Message, Snowflake, TextChannel, ThreadChannel, User } from 'discord.js';
 import { DBDriver } from "../../database/DBDriver";
 import { ENV } from "../../env/env";
 import { DraftUserId, ServerId, SessionId } from "./BaseTypes";
@@ -27,32 +27,35 @@ export class DiscordResolver {
         return member;
     }
 
-    fetchGuildMember(userId: string): Promise<GuildMember> {
+    fetchGuildMember(userId: DraftUserId): Promise<GuildMember> {
         return this.guild.members.fetch(userId);
     }
 
-    resolveGuildMember(userId: string): GuildMember | null {
+    resolveGuildMember(userId: DraftUserId): GuildMember | null {
         return this.guild.members.resolve(userId);
     }
 
-    resolveUser(userId: string): User | undefined {
+    resolveUser(userId: DraftUserId): User | undefined {
         return this.resolveGuildMember(userId)?.user;
     }
 
-    async resolveUserAsync(userId: string): Promise<User> {
+    async resolveUserAsync(userId: DraftUserId): Promise<User> {
         return (await this.fetchGuildMember(userId)).user;
     }
 
-    async resolveMessageInAnnouncementChannel(messageId: string): Promise<Message | undefined> {
+    async resolveMessageInAnnouncementChannel(messageId: SessionId): Promise<Message | undefined> {
         if (!this.announcementChannel) {
             throw new Error("Text Channel not attached - unable to resolveMessage.  If the server just came online, maybe try one more time in 10-15 seconds");
         }
         return await this.resolveMessage(this.announcementChannel.id, messageId);
     }
 
-    async resolveMessage(channelId: string, messageId: string): Promise<Message | undefined> {
-        const guildChannel: GuildChannel | null = this.guild.channels.resolve(channelId);
-        if (!guildChannel || guildChannel.type !== 'text') {
+    async resolveMessage(channelId: string, messageId: SessionId): Promise<Message | undefined> {
+        const guildChannel: GuildChannel | ThreadChannel | null = this.guild.channels.resolve(channelId as Snowflake);
+        if (!guildChannel || guildChannel.isThread()) {
+            return undefined;
+        }
+        if (guildChannel.type !== 'GUILD_TEXT') {
             return undefined;
         }
         const channel = guildChannel as TextChannel;
@@ -80,10 +83,10 @@ export class DiscordResolver {
         const {DRAFT_CHANNEL_NAME, log} = env;
 
         let announcementChannel;
-        channels.cache.each((channel: GuildChannel) => {
+        channels.cache.each((channel: GuildChannel | ThreadChannel) => {
             const {name: channelName, type} = channel;
 
-            if (type !== 'text') {
+            if (type !== 'GUILD_TEXT') {
                 return;
             }
 

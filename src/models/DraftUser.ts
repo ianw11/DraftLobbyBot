@@ -137,7 +137,7 @@ export default class DraftUser {
     }
 
     async sendEmbedDM(embed: MessageEmbed): Promise<void> {
-        await (await this.getDmChannel()).send({embed: embed})
+        await (await this.getDmChannel()).send({embeds: [embed]})
     }
 
     private async getDmChannel() {

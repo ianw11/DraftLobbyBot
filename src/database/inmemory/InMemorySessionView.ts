@@ -3,8 +3,8 @@ import { removeFromArray } from "../../Utils";
 import { ISessionView, SessionParametersWithSugar } from "../SessionDBSchema";
 
 export class InMemorySessionView implements ISessionView {
-    joinedPlayerIds: string[] = [];
-    waitlistedPlayerIds: string[] = [];
+    joinedPlayerIds: DraftUserId[] = [];
+    waitlistedPlayerIds: DraftUserId[] = [];
     sessionClosed = false;
 
     sessionParameters: SessionParametersWithSugar;

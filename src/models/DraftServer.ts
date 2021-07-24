@@ -2,7 +2,7 @@ import ENV from '../env/EnvBase';
 import {Resolver} from "./types/ResolverTypes";
 import Session from "./Session";
 import DraftUser from "./DraftUser";
-import { Message } from "discord.js";
+import { Message, PartialMessage } from "discord.js";
 import { SessionInjectedParameters, SessionParametersWithSugar } from '../database/SessionDBSchema';
 import { ServerId, SessionId } from './types/BaseTypes';
 
@@ -127,7 +127,7 @@ export default class DraftServer {
     // PUBLIC GET METHODS //
     ////////////////////////
 
-    getSessionFromMessage(message: Message): Session | undefined {
+    getSessionFromMessage(message: Message | PartialMessage): Session | undefined {
         // We want to verify that we can ONLY resolve messages from the announcement channel.
         
         // To do this, we first compare the message's channel's id to the id of the saved

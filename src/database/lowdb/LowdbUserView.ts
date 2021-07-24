@@ -1,21 +1,19 @@
 import { DraftUserId, ServerId, SessionId } from "../../models/types/BaseTypes";
 import { IUserView, UserDBSchema } from "../UserDBSchema";
-import { ObjectChain } from "./LowdbViewBase";
+import { LowDbViewBase, ObjectChain } from "./LowdbViewBase";
 
-export class LowdbUserView implements IUserView {
-
-    private readonly cursor;
+export class LowdbUserView extends LowDbViewBase<UserDBSchema> implements IUserView {
     
     constructor(cursor: ObjectChain<UserDBSchema>) {
-        this.cursor = cursor;
+        super(cursor);
     }
 
     get serverId(): ServerId {
-        return this.cursor.get('serverId').value();
+        return this.getSnowflake('serverId');
     }
 
     get userId(): DraftUserId {
-        return this.cursor.get('userId').value();
+        return this.getSnowflake('userId');
     }
     /* No setter for userId - it's readonly */
 
@@ -61,7 +59,8 @@ export class LowdbUserView implements IUserView {
     }
 
     get createdSessionId(): SessionId | undefined {
-        return this.cursor.get('createdSessionId').value();
+        const sessionId = this.getSnowflake('createdSessionId');
+        return sessionId === "" ? undefined : sessionId;
     }
     set createdSessionId(newId: SessionId | undefined) {
         this.cursor.assign({createdSessionId: newId}).write();

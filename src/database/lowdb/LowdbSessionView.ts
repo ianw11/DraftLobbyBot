@@ -41,16 +41,16 @@ export class LowdbSessionView extends LowDbViewBase<SessionDBSchema> implements 
     }
 
     get serverId(): ServerId {
-        return this.getString('serverId');
+        return this.getSnowflake('serverId');
     }
 
     get sessionId(): SessionId {
-        return this.getString('sessionId');
+        return this.getSnowflake('sessionId');
     }
 
     get ownerId(): DraftUserId | undefined {
-        const id = this.getString("ownerId");
-        return id === "" ? undefined : id;
+        const id = this.getSnowflake("ownerId");
+        return id === "" ? undefined : id as DraftUserId | undefined;
     }
     set ownerId(id: DraftUserId | undefined) {
         this.assign({ownerId: id});

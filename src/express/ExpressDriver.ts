@@ -5,7 +5,7 @@ import { getCommand } from '../commands';
 import Context from '../commands/models/Context';
 import { ENV } from '../env/env';
 import DraftServer from '../models/DraftServer';
-import { ServerId } from '../models/types/BaseTypes';
+import { DraftUserId, ServerId } from '../models/types/BaseTypes';
 
 export type ServerResolver = (serverId: ServerId) => Promise<DraftServer>;
 
@@ -62,7 +62,7 @@ export class ExpressDriver {
         });
     }
 
-    private async createContext(serverId: ServerId, userId: string, params: string[]): Promise<Context> {
+    private async createContext(serverId: ServerId, userId: DraftUserId, params: string[]): Promise<Context> {
         let user = this.client.users.resolve(userId);
         if (!user) {
             user = await this.client.users.fetch(userId);
@@ -89,8 +89,8 @@ export class ExpressDriver {
 
             const args = req.body ? req.body.split(' ') : [];
 
-            const serverId: string|undefined = req.query.serverId as string|undefined;
-            const userId: string|undefined = req.query.userId as string|undefined;
+            const serverId = req.query.serverId as ServerId|undefined;
+            const userId = req.query.userId as DraftUserId|undefined;
 
             if (!serverId) {
                 res.status(400).send('serverId is required');
@@ -107,8 +107,10 @@ export class ExpressDriver {
             await command.execute(context);
             res.status(200).send("Success");
         } catch (e) {
-            res.status(500).send(e.message);
-            this.env.log(e);
+            if (e instanceof Error) {
+                res.status(500).send(e.message);
+                this.env.log(e);
+            }
         }
     }
 }

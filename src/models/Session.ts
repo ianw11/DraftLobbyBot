@@ -263,7 +263,10 @@ export default class Session {
     private async updateMessage() {
         const message = await this.resolver.discordResolver.resolveMessageInAnnouncementChannel(this.sessionId);
         if (message) {
-            await message.edit('', await this.getEmbed());
+            const embed = await this.getEmbed();
+            await message.edit({
+                embeds: [embed]
+            });
         }
     }
 

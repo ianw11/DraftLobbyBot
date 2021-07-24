@@ -1,5 +1,5 @@
 import { Arg, SubstituteOf } from "@fluffy-spoon/substitute";
-import {  GuildChannelManager } from "discord.js";
+import {  GuildChannelManager, Snowflake } from "discord.js";
 import { DiscordResolver, Resolver } from "../../../src/models/types/ResolverTypes";
 import { asyncForEach } from "../../../src/Utils";
 import { expect } from "../../chaiAsync.spec";
@@ -40,13 +40,13 @@ describe('ResolverTypes', () => {
             it('can resolve every GuildMember and will not resolve others', () => {
                 mocks.mockGuildMembers.forEach(guildMember => {
                     expect(resolver.resolveGuildMember(guildMember.id)).is.not.undefined;
-                    expect(resolver.resolveGuildMember(guildMember.id + 'FAKE')).is.undefined;
+                    expect(resolver.resolveGuildMember(guildMember.id + 'FAKE' as Snowflake)).is.undefined;
                 });
             });
             it('can fetch every GuildMember and will not resolve others', async () => {
                 await asyncForEach(mocks.mockGuildMembers, async guildMember => {
                     await expect(resolver.fetchGuildMember(guildMember.id)).is.eventually.not.undefined;
-                    await expect(resolver.fetchGuildMember(guildMember.id + 'FAKE')).is.eventually.undefined;
+                    await expect(resolver.fetchGuildMember(guildMember.id + 'FAKE' as Snowflake)).is.eventually.undefined;
                 });
             });
         });
@@ -120,10 +120,10 @@ describe('ResolverTypes', () => {
         });
         it('should resolve 5 sessions then drop the lowest to fit in a sixth', () => {
             for(let i = 0; i < 6; ++i) {
-                resolver.resolveSession(`SESSION_VIEW_${i}`);
+                resolver.resolveSession(`SESSION_VIEW_${i}` as unknown as Snowflake);
             }
             for (let i = 1; i < 6; ++i) {
-                resolver.resolveSession(`SESSION_VIEW_${i}`);
+                resolver.resolveSession(`SESSION_VIEW_${i}` as unknown as Snowflake);
             }
             expect(mocks.mockDBDriver.received(6).getSessionView(Arg.all()));
         });

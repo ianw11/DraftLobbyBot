@@ -4,6 +4,7 @@ import { InMemoryDriver } from "../../src/database/inmemory/InMemoryDriver";
 import { expect } from "../chaiAsync.spec";
 import setup from "../setup.spec";
 import { mockEnv } from "../TestHelpers.spec";
+import { Snowflake } from "discord.js";
 
 describe("Test DBDriver", () => {
 
@@ -12,8 +13,8 @@ describe("Test DBDriver", () => {
         new LowdbDriver(mockEnv)
     ].forEach((driver: DBDriverBase) => {
         it("should build a session from template without parameters", () => {
-            const serverId = "SERVER_ID";
-            const sessionId = "SESSION_ID";
+            const serverId = "SERVER_ID" as Snowflake;
+            const sessionId = "SESSION_ID" as Snowflake;
             
             const session = driver.buildSessionFromTemplate(serverId, sessionId, mockEnv);
 
@@ -26,8 +27,8 @@ describe("Test DBDriver", () => {
         });
 
         it("should build a session from template with parameters", () => {
-            const serverId = "SERVER_ID";
-            const sessionId = "SESSION_ID";
+            const serverId = "SERVER_ID" as Snowflake;
+            const sessionId = "SESSION_ID" as Snowflake;
 
             const params = setup().mockSessionParameters;
             

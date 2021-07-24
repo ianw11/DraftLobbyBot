@@ -55,7 +55,7 @@ describe("Test DraftUser", () => {
         it('sends a DM successfully', async () => {
             const message = "WORDS";
             await user.sendDM(message);
-            assert(mocks.mockDmChannel.received(1).send(message, undefined));
+            assert(mocks.mockDmChannel.received(1).send(message));
         });
         it('does nothing with a null message', async () => {
             await user.sendDM(null);
@@ -68,7 +68,7 @@ describe("Test DraftUser", () => {
             const {mockSession, mockDmChannel, mockSessionParameters} = mocks;
             await user.addedToSession(mockSession);
 
-            assert(mockDmChannel.received(1).send(`You're confirmed for ${mockSessionParameters.name}`, undefined));
+            assert(mockDmChannel.received(1).send(`You're confirmed for ${mockSessionParameters.name}`));
             expect(userData.joinedSessionIds).contains(mockSession.sessionId);
             expect(userData.joinedSessionIds.length).eq(1);
         });
@@ -79,7 +79,7 @@ describe("Test DraftUser", () => {
 
             await user.removedFromSession(mockSession);
 
-            assert(mockDmChannel.received(1).send(`You've been removed from ${mockSessionParameters.name}`, undefined));
+            assert(mockDmChannel.received(1).send(`You've been removed from ${mockSessionParameters.name}`));
             expect(userData.joinedSessionIds.length).eq(0);
         });
 
@@ -87,7 +87,7 @@ describe("Test DraftUser", () => {
             const {mockSession, mockDmChannel, mockSessionParameters} = mocks;
             await user.addedToWaitlist(mockSession);
 
-            assert(mockDmChannel.received(1).send(`You've been waitlisted for ${mockSessionParameters.name}.  You're in position: ${constants.NUM_IN_WAITLIST}`, undefined));
+            assert(mockDmChannel.received(1).send(`You've been waitlisted for ${mockSessionParameters.name}.  You're in position: ${constants.NUM_IN_WAITLIST}`));
             expect(userData.waitlistedSessionIds).contains(mockSession.sessionId);
             expect(userData.waitlistedSessionIds.length).eq(1);
         });
@@ -98,7 +98,7 @@ describe("Test DraftUser", () => {
 
             await user.removedFromWaitlist(mockSession);
 
-            assert(mockDmChannel.received(1).send(`You've been removed from the waitlist for ${mockSessionParameters.name}`, undefined));
+            assert(mockDmChannel.received(1).send(`You've been removed from the waitlist for ${mockSessionParameters.name}`));
             expect(userData.waitlistedSessionIds.length).eq(0);
             expect(userData.joinedSessionIds.length).eq(0);
         });
@@ -109,7 +109,7 @@ describe("Test DraftUser", () => {
             
             await user.upgradedFromWaitlist(mockSession);
 
-            assert(mockDmChannel.received(1).send(`You've been upgraded from the waitlist for ${mockSessionParameters.name}`, undefined));
+            assert(mockDmChannel.received(1).send(`You've been upgraded from the waitlist for ${mockSessionParameters.name}`));
             expect(userData.waitlistedSessionIds.length).eq(0);
             expect(userData.joinedSessionIds.length).eq(1);
             expect(userData.joinedSessionIds).contains(mockSession.sessionId);
@@ -121,7 +121,7 @@ describe("Test DraftUser", () => {
 
             await user.sessionClosed(mockSession, false);
 
-            assert(mockDmChannel.received(1).send(mockSessionParameters.sessionCancelMessage, undefined));
+            assert(mockDmChannel.received(1).send(mockSessionParameters.sessionCancelMessage));
             expect(userData.waitlistedSessionIds.length).eq(0);
             expect(userData.joinedSessionIds.length).eq(0);
         });
@@ -132,7 +132,7 @@ describe("Test DraftUser", () => {
 
             await user.sessionClosed(mockSession, false);
 
-            assert(mockDmChannel.received(1).send(mockSessionParameters.sessionCancelMessage, undefined));
+            assert(mockDmChannel.received(1).send(mockSessionParameters.sessionCancelMessage));
             expect(userData.waitlistedSessionIds.length).eq(0);
             expect(userData.joinedSessionIds.length).eq(0);
         });
@@ -143,7 +143,7 @@ describe("Test DraftUser", () => {
 
             await user.sessionClosed(mockSession, true);
 
-            assert(mockDmChannel.received(1).send(mockSessionParameters.sessionConfirmMessage, undefined));
+            assert(mockDmChannel.received(1).send(mockSessionParameters.sessionConfirmMessage));
             expect(userData.waitlistedSessionIds.length).eq(0)
             expect(userData.joinedSessionIds.length).eq(0);
         });
@@ -154,7 +154,7 @@ describe("Test DraftUser", () => {
 
             await user.sessionClosed(mockSession);
 
-            assert(mockDmChannel.received(1).send(mockSessionParameters.sessionWaitlistMessage, undefined));
+            assert(mockDmChannel.received(1).send(mockSessionParameters.sessionWaitlistMessage));
             expect(userData.waitlistedSessionIds.length).eq(0)
             expect(userData.joinedSessionIds.length).eq(0);
         });
@@ -172,7 +172,7 @@ describe("Test DraftUser", () => {
             const {mockDmChannel} = mocks;
 
             await user.listSessions();
-            mockDmChannel.received(1).send('\n**Sessions you are confirmed for:**\n', undefined);
+            mockDmChannel.received(1).send('\n**Sessions you are confirmed for:**\n');
 
             await user.addedToSession(mocks.mockSession);
             await user.addedToWaitlist(mocks.mockSession);
@@ -182,19 +182,19 @@ describe("Test DraftUser", () => {
             const sessionDescription = mocks.mockSession.getDescription();
             const sessionInfoRow = `- **${sessionName}**  || ${sessionDescription}`;
             const expected = `\n**Sessions you are confirmed for:**\n${sessionInfoRow}\n**Sessions you are waitlisted for:**\n${sessionInfoRow} || You are in position 1 of 3\n`;
-            mockDmChannel.received(1).send(expected, undefined);
+            mockDmChannel.received(1).send(expected);
         });
 
         it('can fail to print session info when no session is created', async () => {
             const {mockDmChannel, mockSession} = mocks;
 
             await user.printOwnedSessionInfo();
-            mockDmChannel.received(1).send("Cannot send info - you haven't created a session", undefined);
+            mockDmChannel.received(1).send("Cannot send info - you haven't created a session");
 
             user.setCreatedSessionId(mockSession.sessionId);
             await user.printOwnedSessionInfo();
             // No idea what `MessageOptions & {split: true}` represents, but it compiles soooo
-            mockDmChannel.received(1).send(Arg.is((msg): msg is MessageOptions & {split: true} => typeof msg === 'object' && 'embed' in msg));
+            mockDmChannel.received(1).send(Arg.is((msg): msg is MessageOptions & {split: true} => typeof msg === 'object' && 'embeds' in msg));
         });
     });
 
