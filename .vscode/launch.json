@@ -27,6 +27,17 @@
             "outputCapture": "std"
         },
         {
+            "name": "Run Single Test Suite (Windows)",
+            "type": "node",
+            "request": "launch",
+            "cwd": "${workspaceFolder}",
+            "runtimeExecutable": "npm",
+            "runtimeArgs": [
+                "run", "executeTestWindowsSingle"
+            ],
+            "outputCapture": "std"
+        },
+        {
             "name": "Run Unit Tests (Unix)",
             "type": "node",
             "request": "launch",

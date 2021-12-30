@@ -62,6 +62,11 @@ export function parseDate(parameters: string[]): Date | undefined {
     return date;
 }
 
+export function dateToDiscordTimestamp(date: Date): string {
+    const epochMillis = Math.floor(date.getTime() / 1000); // We want the epoch SECONDS and getTime() gives MILLIseconds
+    return `<t:${epochMillis}:f>`;
+}
+
 export function replaceFromDict(inputStr: string, delimiter: string, dict: Record<string, string>): string {
     let withinDelimiter = true;
     const reducer = (accumulator: string, current: string): string => {

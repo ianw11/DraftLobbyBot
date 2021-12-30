@@ -1,5 +1,5 @@
 import { ENV, replaceStringWithEnv } from './env/env';
-import {Message, MessageReaction, User, Guild, PartialUser, ClientOptions, PresenceData, Client, PartialMessageReaction} from 'discord.js';
+import {Message, MessageReaction, User, Guild, PartialUser, ClientOptions, PresenceData, Client, PartialMessageReaction, Awaited, Interaction} from 'discord.js';
 import Commands from './commands';
 import DraftServer from './models/DraftServer';
 import Session from './models/Session';
@@ -13,18 +13,108 @@ import { ExpressDriver } from './express/ExpressDriver';
 import { ISessionView } from './database/SessionDBSchema';
 import { asyncForEach } from './Utils';
 import { getGuild } from './models/discord/DiscordClientUtils';
+import { ServerId } from './models/types/BaseTypes';
 
 //
 // To set your Discord Bot Token, take a look at ./env/env.ts for an explanation (hint: make an env.json)
 //
 
-// Join Link: https://discord.com/api/oauth2/authorize?client_id={YOUR_CLIENT_ID}&scope=bot&permissions=133200
+// Join Link: https://discord.com/api/oauth2/authorize?client_id={YOUR_CLIENT_ID}&scope=bot%20applications.commands&permissions=2147616848
+// Permissions: Manage Channels, Send Messages, Mention Everyone, Add Reactions, Use Slash Commands
 
 const SERVER_CACHE: Record<string, DraftServer> = {};
 
 ////////////////
 // DATA LAYER //
 ////////////////
+
+async function preloadGuildData(env: ENV, dbDriver: DBDriver, client: Client) {
+    // The first thing we do is go through and preload the guilds, messages, and users that
+    // exist in the database.
+    // We MUST preload guilds and sessions (so we are actually even watching those messages in the first place)
+    // and preloading users 
+
+    let numErrors = 0;
+    let successful = 0;
+    let additionalGuilds = 0;
+    const kickedFromServerIds: {[key: string]: boolean} = {};
+    await asyncForEach(dbDriver.getAllSessions(), async (sessionView: ISessionView) => {
+        const { serverId, sessionId, ownerId } = sessionView;
+
+        if (kickedFromServerIds[serverId]) {
+            ++numErrors;
+            // If we've already seen this server, all that needs
+            // to happen is to remove it from the database
+            dbDriver.deleteSessionFromDatabase(serverId, sessionId);
+            return;
+        }
+
+        // If the bot has been kicked from a server OR
+        // if we're unable to load the message we created OR
+        // if there _should_ be an owner but maybe the owner left the server,
+        // then just close the session (which deletes and notifies attendees).
+
+        let guild = client.guilds.resolve(serverId);
+        if (!guild) {
+            try {
+                guild = await client.guilds.fetch(serverId);
+                ++additionalGuilds;
+            } catch (e) {
+                ++numErrors;
+                // We were kicked from the server
+                kickedFromServerIds[serverId] = true;
+                dbDriver.deleteSessionFromDatabase(serverId, sessionId);
+
+                // Delete all other users from the database the first time this happens
+                dbDriver.getAllUsersFromServer(serverId).forEach((user) => {
+                    dbDriver.deleteUserFromDatabase(serverId, user.userId);
+                });
+                return;
+            }
+        }
+
+        const draftServer = getDraftServer(guild, env, dbDriver);
+
+        if (ownerId) {
+            try {
+                // Preload the owner
+                await guild.members.fetch(ownerId);
+
+                // Also preload their display name
+                // This is because if commands are executed via another input (ie Express)
+                // then the user may not have ever shown up to the client before.
+                // await draftServer.resolver.resolveUser(ownerId).getDisplayNameAsync();
+            } catch (e) {
+                ++numErrors;
+                // The owner left the server
+                await draftServer.closeSession(sessionId);
+                return;
+            }
+        }
+
+        const channel = draftServer.resolver.discordResolver.announcementChannel;
+        if (channel) {
+            try {
+                // Preload the message to watch
+                await channel.messages.fetch(sessionId);
+            } catch (e) {
+                ++numErrors;
+                // The message was deleted
+                await draftServer.closeSession(sessionId);
+                return;
+            }
+        }
+
+        ++successful;
+    });
+
+    // Report the results
+
+    env.log(`Preloaded ${successful} sessions.${numErrors > 0 ? ` There were ${numErrors} discrepancies/issues but they have been resolved.` : ''}`);
+    if (additionalGuilds !== 0) {
+        env.log(`${additionalGuilds} guilds added to cache.  New total: ${client.guilds.cache.size}`);
+    }
+}
 
 function getDraftServer(guild: Guild, env: ENV, dbDriver: DBDriver): DraftServer {
     const serverId = guild.id;
@@ -49,6 +139,88 @@ function getServerAndSession(reaction: MessageReaction | PartialMessageReaction,
     const session = draftServer.getSessionFromMessage(message);
 
     return [draftServer, session];
+}
+
+async function createSlashCommandInteractions(client: Client, env: ENV, guildId: ServerId) {
+
+    // commands.set() is better for a bulk update (like at application launch)
+    //  it will also replace all previous commands
+    // commands.create() can be used to singly deploy or live-update a command
+    try {
+        //await client.application?.commands.set([]);
+        await client.application?.commands.set([
+            {
+                name: `help`,
+                description: `this is description for help command`,
+                options: [
+                    {
+                        name: `command`,
+                        description: `the command option for help is not required`,
+                        type: 'STRING',
+                        required: false,
+                    }
+                ]
+            },
+            {
+                name: `session`,
+                description: `sub command grouping folder for sessions`,
+                options: [
+                    {
+                        name: `create`,
+                        description: `create a session`,
+                        type: 'SUB_COMMAND',
+                        options: [
+                            {
+                                name: `template`,
+                                description: `the name of the template to use`,
+                                type: 'STRING',
+                                required: false,
+                                choices: [
+                                    {
+                                        name: `default`,
+                                        value: `default`
+                                    },
+                                    {
+                                        name: `winston`,
+                                        value: `winston`
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        name: `cancel`,
+                        description: `close a session`,
+                        type: 'SUB_COMMAND_GROUP',
+                        options: [
+                            {
+                                name: `all`,
+                                description: `closes ALL sessions`,
+                                type: 'SUB_COMMAND'
+                            },
+                            {
+                                name: `single`,
+                                description: `closes a single session`,
+                                type: 'SUB_COMMAND',
+                                options: [
+                                    {
+                                        name: `id`,
+                                        description: `session id to close`,
+                                        type: `BOOLEAN`,
+                                        required: false
+                                    }
+                                ]
+                            }
+                        ]
+                    }
+                ]
+            }
+        ]);
+        env.log(`Set the global commands for guild id ${guildId}`);
+    } catch (e) {
+        console.error("Error thrown when setting global interaction commands!");
+        console.error(e);
+    }
 }
 
 ///////////////////////////////////////////
@@ -145,97 +317,36 @@ function onReaction(env: ENV, dbDriver: DBDriver, callback: ReactionCallback): C
     }
 }
 
+function onInteraction(env: ENV, dbDriver: DBDriver): ((interaction: Interaction) => Awaited<void>) {
+    return async (interaction: Interaction) => {
+        if(!interaction.isCommand()) {
+            console.log(interaction);
+            return;
+        }
+
+        const {command, commandId, commandName, guildId, options, type, user, version} = interaction;
+
+        console.log(`Received interaction`, {commandId, commandName, guildId, options, type, version});
+
+        await interaction.reply('ok');
+    };
+}
+
 // The setup function that pre-loads Session data and turns on the Express server
 function onReady(client: Client, env: ENV, dbDriver: DBDriver, expressDriver: ExpressDriver, provideKillSwitch: (killSwitch: ()=>void)=>void) {
     let killFlag = false;
     return async () => {
         env.log("Logged in successfully - BEGINNING SETUP");
-        env.log(`${client.guilds.cache.size} guilds loaded`);
+        env.log(`${client.guilds.cache.size} guilds loaded. Validating Sessions vs available Guilds...`);
 
-        // The first thing we do is go through and preload the guilds, messages, and users that
-        // exist in the database.
-        // We MUST preload guilds and sessions (so we are even watching those messages in the first place)
-        // and preloading users 
-
-        let numErrors = 0;
-        let successful = 0;
-        let additionalGuilds = 0;
-        const kickedFromServerIds: {[key: string]: boolean} = {};
-        asyncForEach(dbDriver.getAllSessions(), async (sessionView: ISessionView) => {
-            const { serverId, sessionId, ownerId } = sessionView;
-
-            if (kickedFromServerIds[serverId]) {
-                ++numErrors;
-                // If we've already seen this server, all that needs
-                // to happen is to remove it from the database
-                dbDriver.deleteSessionFromDatabase(serverId, sessionId);
-                return;
-            }
-
-            // If the bot has been kicked from a server OR
-            // if we're unable to load the message we created OR
-            // if there _should_ be an owner but maybe the owner left the server,
-            // then just close the session (which deletes and notifies attendees).
-
-            let guild = client.guilds.resolve(serverId);
-            if (!guild) {
-                try {
-                    guild = await client.guilds.fetch(serverId);
-                    ++additionalGuilds;
-                } catch (e) {
-                    ++numErrors;
-                    // We were kicked from the server
-                    kickedFromServerIds[serverId] = true;
-                    dbDriver.deleteSessionFromDatabase(serverId, sessionId);
-
-                    // Delete all other users from the database the first time this happens
-                    dbDriver.getAllUsersFromServer(serverId).forEach((user) => {
-                        dbDriver.deleteUserFromDatabase(serverId, user.userId);
-                    });
-                    return;
-                }
-            }
-
-            const draftServer = getDraftServer(guild, env, dbDriver);
-
-            if (ownerId) {
-                try {
-                    // Preload the owner
-                    await guild.members.fetch(ownerId);
-
-                    // Also preload their display name
-                    // This is because if commands are executed via another input (ie Express)
-                    // then the user may not have ever shown up to the client before.
-                    // await draftServer.resolver.resolveUser(ownerId).getDisplayNameAsync();
-                } catch (e) {
-                    ++numErrors;
-                    // The owner left the server
-                    await draftServer.closeSession(sessionId);
-                    return;
-                }
-            }
-
-            const channel = draftServer.resolver.discordResolver.announcementChannel;
-            if (channel) {
-                try {
-                    // Preload the message to watch
-                    await channel.messages.fetch(sessionId);
-                } catch (e) {
-                    ++numErrors;
-                    // The message was deleted
-                    await draftServer.closeSession(sessionId);
-                    return;
-                }
-            }
-
-            ++successful;
-        });
-        env.log(`Preloaded ${successful} sessions.${numErrors > 0 ? ` There were ${numErrors} discrepancies/issues but they have been resolved.` : ''}`);
-        env.log(`${additionalGuilds} guilds added to cache.  New total: ${client.guilds.cache.size}`);
+        await preloadGuildData(env, dbDriver, client);
 
         if (!killFlag) {
             // Additional tasks that need to be started alongside the application lifecycle go here
             // Be sure to safely close everything using the killSwitch() below
+            await asyncForEach(client.guilds.cache.array(), async guild => {
+                await createSlashCommandInteractions(client, env, guild.id);
+            });
 
             expressDriver.startServer();
         }
@@ -243,7 +354,7 @@ function onReady(client: Client, env: ENV, dbDriver: DBDriver, expressDriver: Ex
         provideKillSwitch(() => {
             env.log("Kill switch triggered, closing server");
             killFlag = true;
-    
+
             // Anything that listens to a port/maintains a connection needs to be turned off
             expressDriver.stopServer();
 
@@ -319,6 +430,7 @@ export default function main(env: ENV): void {
     client.on('messageCreate', onMessage(env, dbDriver, ()=>killSwitch()));
     client.on('messageReactionAdd', onReaction(env, dbDriver, async (draftUser, session) => await session.addPlayer(draftUser)));
     client.on('messageReactionRemove', onReaction(env, dbDriver, async (draftUser, session) => await session.removePlayer(draftUser)));
+    client.on('interactionCreate', onInteraction(env, dbDriver));
     //client.on('debug', (msg) => console.log(`[DISCORD DEBUG] ${msg}`));
     client.on('warn', (msg) => console.log(`[DISCORD WARN] ${msg}`));
     client.on('error', (err) => console.error(err));

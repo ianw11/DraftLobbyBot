@@ -1,6 +1,6 @@
 import { MessageEmbed, EmbedFieldData } from "discord.js";
 import DraftUser from "./DraftUser";
-import { replaceFromDict, asyncForEach } from "../Utils";
+import { replaceFromDict, asyncForEach, dateToDiscordTimestamp } from "../Utils";
 import { Resolver } from "./types/ResolverTypes";
 import { ISessionView } from '../database/SessionDBSchema';
 import { DraftUserId, SessionId } from './types/BaseTypes';
@@ -330,7 +330,7 @@ export default class Session {
         const fields: EmbedFieldData[] = [
             {
                 name: "When",
-                value: date ? date.toString() : 'Ad-hoc event - Join now!'
+                value: date ? dateToDiscordTimestamp(date) : 'Ad-hoc event - Join now!'
             },
             {
                 name: "Attendance",

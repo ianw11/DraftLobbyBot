@@ -12,6 +12,7 @@
     "test": "npm run build && npm run executeTestWindows",
     "testNoLint": "npm run buildNoLint && npm run executeTestWindows",
     "executeTestWindows": "SET TS_NODE_PROJECT=test/tsconfig.json&& nyc mocha -P test --colors -r ts-node/register test/**/*.spec.ts",
+    "executeTestWindowsSingle": "SET TS_NODE_PROJECT=test/tsconfig.json&& nyc mocha -P test --colors -r ts-node/register test/temp.spec.ts",
     "testUnix": "npm run build && npm run executeTestUnix",
     "executeTestUnix": "TS_NODE_PROJECT='test/tsconfig.json' nyc mocha -P test --colors -r ts-node/register test/**/*.spec.ts test/*.spec.ts",
     "clean": "rm -r build",
@@ -28,7 +29,7 @@
     "express": "4.17.1",
     "human-readable-ids": "1.0.4",
     "lowdb": "1.0.0",
-    "typescript": "4.4.0-beta"
+    "typescript": "4.4"
   },
   "engines": {
     "node": "14.15.0"
